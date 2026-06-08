@@ -1,0 +1,6 @@
+{
+  "name": "Xcel-2",
+  "description": "Folder rename and backup utility featuring advanced Shizuku file management automation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

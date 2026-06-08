@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#121212">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="About Xcel-2"
+        android:textColor="#BB86FC"
+        android:textSize="22sp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="12dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Instructions:\n\n1. Unlock your Android/data folder via shizuku app we have provided on our telegram channel.\n   You can search How to Unlock Data via shizuku on YT \n\n2. Download needed files: MT MANAGER app, Hologram file of 2-3GB, Xcel-2 panel app.\n   (make sure the xcel1.zip is located on Download folder)\n\n3. Install the app Xcel-2 and give it permission then.\n   PANEL is access key.\n   then there you can see Activate for First time\n   tap it. it will take 1-3 min - be patient.\n\nAll done your panel is activated.\nNext time open the app and you can turn on/off within few seconds, and it will auto open the app.\n\nRules:\nWE ARE X-CELESTIALS, only our selected members use the panel and they are requested to follow these rules:\n1. Be an active member, Contribute 1000 glory per day (or atleast 5000 per week) and reach Grandmaster. We see your glory.\n2. Do not share with anyone without permission or we stop providing you or him who gave you this panel.\n3. Ask permission to @x_celestials if you want to give this panel to your friends. And keep it secret, dont talk about it not to any person but also to guild members.\n4. Show respect to guild members, Do not mess up with anyone."
+        android:textColor="#CCCCCC"
+        android:textSize="14sp"
+        android:layout_marginBottom="16dp"/>
+
+    <VideoView
+        android:id="@+id/video_view"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_marginBottom="16dp"/>
+
+</LinearLayout>

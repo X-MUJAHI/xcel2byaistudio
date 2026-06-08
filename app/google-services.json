@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "308408513904",
+    "project_id": "xcel-mujahi",
+    "storage_bucket": "xcel-mujahi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:308408513904:android:2a987b7b94a716aca7cbb5",
+        "android_client_info": {
+          "package_name": "com.aistudio.xcelpanel.ujhqwe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAx4Nk0x69RPDQLm9cbFzCvSIyOC5A7PFk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#151A22"
+    android:keepScreenOn="true">
+
+    <TextView
+        android:id="@+id/tv_header"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="X-CELESTIALS ⚡"
+        android:textColor="#00E5FF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_gravity="center"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/tv_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#00E5FF"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp"/>
+
+    <Button
+        android:id="@+id/btn_activate"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="ACTIVATE FIRST TIME"
+        android:backgroundTint="#00E5FF"
+        android:textColor="#151A22"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"/>
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:max="100"
+        android:progressTint="#00E5FF"/>
+
+    <TextView
+        android:id="@+id/tv_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textColor="#00E5FF"
+        android:textSize="14sp"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btn_turn_on"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="TURN ON"
+        android:backgroundTint="#00E5FF"
+        android:textColor="#151A22"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btn_turn_off"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="TURN OFF"
+        android:backgroundTint="#F44336"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="32dp">
+
+        <Button
+            android:id="@+id/btn_telegram"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Telegram"
+            android:backgroundTint="#1F2937"
+            android:textColor="#00E5FF"/>
+
+        <Button
+            android:id="@+id/btn_instagram"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Instagram"
+            android:backgroundTint="#1F2937"
+            android:textColor="#F50057"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+</LinearLayout>

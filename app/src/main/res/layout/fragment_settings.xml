@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#151A22"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SETTINGS"
+        android:textColor="#00E5FF"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"
+        android:gravity="center" />
+        
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Permissions Header -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="PERMISSION"
+                android:textColor="#00E5FF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp"
+                android:layout_marginTop="8dp"/>
+
+            <Button
+                android:id="@+id/btn_shizuku_perm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="REQUEST SHIZUKU PERMISSION"
+                android:backgroundTint="#1F2937"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="12dp"/>
+
+            <Button
+                android:id="@+id/btn_saf_perm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GRANT ANDROID/DATA ACCESS"
+                android:backgroundTint="#1F2937"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="24dp"/>
+
+            <!-- Game Header -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GAME"
+                android:textColor="#00E5FF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- Hologram -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:background="#1F2937"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="HOLOGRAM"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp" />
+
+                <Switch
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:clickable="false"
+                    android:thumbTint="#00E5FF"
+                    android:trackTint="#7700E5FF"/>
+            </LinearLayout>
+
+            <!-- Headshot -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:background="#1A1F29"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical"
+                android:alpha="0.5">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="HEADSHOT (Locked)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp" />
+
+                <Switch
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false"
+                    android:clickable="false" />
+            </LinearLayout>
+
+            <!-- Streamer Proof -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:background="#1A1F29"
+                android:gravity="center_vertical"
+                android:alpha="0.5">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="STREAMER PROOF (Locked)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp" />
+
+                <Switch
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false"
+                    android:clickable="false" />
+            </LinearLayout>
+            
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

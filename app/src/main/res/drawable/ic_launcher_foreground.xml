@@ -1,0 +1,63 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Neon Android Head Outline -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 32 46 C 32 30 76 30 76 46"/>
+        
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M 32 46 L 32 78"/>
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M 76 46 L 76 78"/>
+
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M 32 78 C 46 88 56 88 76 78"/>
+        
+    <!-- Antennae -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M 40 38 L 30 24"/>
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M 68 38 L 78 24"/>
+
+    <!-- Glowing Yellow Eyes -->
+    <path
+        android:fillColor="#FFEA00"
+        android:pathData="M 44.5 56 A 3.5 3.5 0 1 1 44.5 55.9 Z"/>
+    <path
+        android:fillColor="#FFEA00"
+        android:pathData="M 63.5 56 A 3.5 3.5 0 1 1 63.5 55.9 Z"/>
+        
+    <!-- Simple Mouth -->
+    <path
+        android:fillColor="#FF000000"
+        android:strokeColor="#FFEA00"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:pathData="M 44 70 L 54 74 L 64 70 L 54 66 Z"/>
+</vector>
