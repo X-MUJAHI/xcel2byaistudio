@@ -87,11 +87,21 @@
         android:layout_marginBottom="8dp"
         android:visibility="gone"/>
 
+    <Button
+        android:id="@+id/btn_not_working"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="APP NOT WORKING?"
+        android:backgroundTint="#1F2937"
+        android:textColor="#F44336"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="32dp">
+        android:layout_marginTop="24dp">
 
         <Button
             android:id="@+id/btn_telegram"

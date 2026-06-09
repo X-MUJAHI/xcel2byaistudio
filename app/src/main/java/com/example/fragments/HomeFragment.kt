@@ -33,6 +33,12 @@ class HomeFragment : Fragment() {
     private var countDownTimer: CountDownTimer? = null
     private val timerUpdateInterval = 1000L
 
+    private val zipPickerLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            processZipActivation(uri)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
@@ -50,6 +56,19 @@ class HomeFragment : Fragment() {
         }
         view.findViewById<Button>(R.id.btn_instagram).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://instagram.com/x_celestials")))
+        }
+        view.findViewById<Button>(R.id.btn_not_working).setOnClickListener {
+            android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("App Not Working?")
+                .setMessage("If you are facing issues, you can follow the tutorial or contact admin for help.")
+                .setPositiveButton("Tutorial") { _, _ ->
+                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://x-link.vercel.app/hologram-tutorial")))
+                }
+                .setNegativeButton("Contact Admin") { _, _ ->
+                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://instagram.com/x_celestials")))
+                }
+                .setNeutralButton("Cancel", null)
+                .show()
         }
 
         btnActivate.setOnClickListener { startFirstTimeActivation() }
@@ -126,10 +145,19 @@ class HomeFragment : Fragment() {
     }
 
     private fun startFirstTimeActivation() {
-        val ctx = context ?: return
-        
         if (!RenameUtil.shizukuAvailable()) {
-            Toast.makeText(ctx, "Please configure/authorize Shizuku first!", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Please configure/authorize Shizuku first!", Toast.LENGTH_LONG).show()
+            return
+        }
+        zipPickerLauncher.launch("application/zip")
+    }
+
+    private fun processZipActivation(uri: android.net.Uri) {
+        val ctx = context ?: return
+        val realPath = RealPathUtil.getPath(ctx, uri)
+
+        if (realPath == null || !File(realPath).exists()) {
+            Toast.makeText(ctx, "Invalid file selected!", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -139,51 +167,52 @@ class HomeFragment : Fragment() {
         tvProgress.text = "Starting..."
         btnActivate.isEnabled = false
 
-        var isExecuting = true
-        Thread {
-            var p = 0
-            while (isExecuting && p < 95) {
-                Thread.sleep(1500)
-                p += 1
+        RenameUtil.executeShizukuScriptAsync(
+            script = """
+                f="/storage/emulated/0/Android/data/com.dts.freefiremax"
+                d="/storage/emulated/0/Android/data/com.mujahi.data"
+                
+                # Move F to D if D does not exist
+                if [ -d "${'$'}f" ] && [ ! -d "${'$'}d" ]; then
+                    mv "${'$'}f" "${'$'}d"
+                fi
+                
+                # Need to copy but no progress available, just copy
+                echo "STATUS:Copying backup... (Takes 1-3 mins)"
+                cp -r "${'$'}d"/. "${'$'}f"/
+
+                echo "STATUS:Extracting Game Data..."
+                if unzip -o "$realPath" -d "/storage/emulated/0/Android/data" ; then
+                    echo "STATUS:Done!"
+                else
+                    echo "STATUS:Error: Unzip failed"
+                    # Return standard failure
+                    exit 1
+                fi
+            """.trimIndent(),
+            onProgress = { line ->
                 requireActivity().runOnUiThread {
-                    if (isExecuting) {
-                        progressBar.progress = p
-                        tvProgress.text = "Copying files... $p%"
+                    if (line.startsWith("STATUS:")) {
+                        tvProgress.text = line.substring(7)
+                        if (tvProgress.text == "Done!") {
+                            progressBar.progress = 100
+                        }
+                    } else if (line.contains("inflating:") || line.contains("extracting:")) {
+                        // Rough visual feedback
+                        if (progressBar.progress < 95) progressBar.progress += 1
+                        val percent = if (progressBar.progress > 99) 99 else progressBar.progress
+                        tvProgress.text = "Extracting... $percent%"
                     }
                 }
-            }
-        }.start()
-
-        Thread {
-            try {
-                val f = MainActivity.APP_FOLDER
-                val d = MainActivity.DATA_FOLDER
-                
-                val success1 = RenameUtil.executeShizukuCommand("mv \"${f.absolutePath}\" \"${d.absolutePath}\"")
-                if (!success1) throw Exception("Failed to backup game folder. Check Shizuku status.")
-
-                RenameUtil.copyDirectory(MainActivity.DATA_FOLDER, MainActivity.APP_FOLDER)
-
-                requireActivity().runOnUiThread { tvProgress.text = "Extracting zip..." }
-
-                val zipPaths = listOf(
-                    java.io.File("/storage/emulated/0/Download/Telegram/xcel1.zip"),
-                    java.io.File("/storage/emulated/0/Download/xcel1.zip")
-                )
-                val zipFile = zipPaths.firstOrNull { it.exists() }
-                    ?: throw Exception("xcel1.zip not found in Downloads folder")
-                
-                RenameUtil.extractZipToDirectoryMerge(zipFile, java.io.File("/storage/emulated/0/Android/data"))
-
-                isExecuting = false
+            },
+            onComplete = { success ->
                 requireActivity().runOnUiThread {
-                    progressBar.progress = 100
-                    tvProgress.text = "Done!"
-                    
-                    // Add slight delay before hiding progress
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        progressBar.visibility = View.GONE
-                        tvProgress.visibility = View.GONE
+                    progressBar.visibility = View.GONE
+                    tvProgress.visibility = View.GONE
+                    if (success) {
+                        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
+                        prefs.edit().putString("CURRENT_SCRIPT", File(realPath).name).apply()
+
                         Toast.makeText(ctx, "Activation successful! Launching...", Toast.LENGTH_SHORT).show()
                         btnTurnOn.text = "LAUNCHING IN 3..."
                         object : CountDownTimer(3000, 1000) {
@@ -197,19 +226,14 @@ class HomeFragment : Fragment() {
                             }
                         }.start()
                         updateUIState()
-                    }, 1000)
-                }
-            } catch (e: Exception) {
-                isExecuting = false
-                requireActivity().runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    tvProgress.visibility = View.GONE
-                    Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                    btnActivate.isEnabled = true
-                    updateUIState()
+                    } else {
+                        Toast.makeText(ctx, "Error during activation. Check Shizuku status.", Toast.LENGTH_LONG).show()
+                        btnActivate.isEnabled = true
+                        updateUIState()
+                    }
                 }
             }
-        }.start()
+        )
     }
 
     private fun handleTurnOn() {

@@ -24,6 +24,35 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Script Header -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SCRIPT"
+                android:textColor="#00E5FF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp"
+                android:layout_marginTop="8dp"/>
+            
+            <TextView
+                android:id="@+id/tv_current_script"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Current: xcel1.zip (Default)"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btn_new_script"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="NEW SCRIPT"
+                android:backgroundTint="#1F2937"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="24dp"/>
+
             <!-- Permissions Header -->
             <TextView
                 android:layout_width="match_parent"
