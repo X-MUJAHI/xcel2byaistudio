@@ -59,6 +59,13 @@ android {
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
+tasks.register<Copy>("copyApk") {
+    dependsOn("assembleDebug")
+    from("build/outputs/apk/debug")
+    into(rootDir.resolve("apk"))
+    include("*.apk")
+}
+
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
 secrets {
