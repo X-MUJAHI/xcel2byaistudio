@@ -60,10 +60,23 @@ android {
 }
 
 tasks.register<Copy>("copyApk") {
-    dependsOn("assembleDebug")
     from("build/outputs/apk/debug")
     into(rootDir.resolve("apk"))
     include("*.apk")
+}
+
+tasks.register<Copy>("copyApkToBuildOutputs") {
+    from("build/outputs/apk/debug")
+    into(rootDir.resolve(".build-outputs"))
+    include("*.apk")
+}
+
+
+
+afterEvaluate {
+    tasks.named("assembleDebug") {
+        finalizedBy("copyApk", "copyApkToBuildOutputs")
+    }
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
