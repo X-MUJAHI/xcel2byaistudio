@@ -87,25 +87,55 @@ class HomeFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         countDownTimer?.cancel()
+        statusAnimator?.cancel()
     }
+
+    private var statusAnimator: android.animation.ObjectAnimator? = null
 
     private fun updateUIState() {
         val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
         val pExists = RenameUtil.checkDirExists(MainActivity.PANEL_FOLDER.absolutePath)
         val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
+        val hExists = RenameUtil.checkDirExists("/storage/emulated/0/Android/data/com.mujahi.hologram")
 
         isOn = fExists && dExists && !pExists
-        val isOff = fExists && pExists && !dExists
+        
+        val isOffOriginal = fExists && pExists && !dExists
+        val isOffHologram = !fExists && !pExists && !dExists && hExists
+        val isOff = isOffOriginal || isOffHologram
+        
         isActivationMode = fExists && !pExists && !dExists
 
+        statusAnimator?.cancel()
+        tvStatus.scaleX = 1f
+        tvStatus.scaleY = 1f
+        tvStatus.alpha = 1f
+
         if (isOn) {
-            tvStatus.text = "Status: ON"
+            tvStatus.text = "Status: ON \uD83D\uDFE2" // Green circle
+            tvStatus.setTextColor(android.graphics.Color.parseColor("#00E676"))
+            
+            // Smooth pulse animation
+            statusAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                tvStatus,
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 1.0f, 1.05f),
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f, 1.05f),
+                android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 1.0f, 0.8f)
+            ).apply {
+                duration = 800
+                repeatCount = android.animation.ObjectAnimator.INFINITE
+                repeatMode = android.animation.ObjectAnimator.REVERSE
+                start()
+            }
         } else if (isOff) {
-            tvStatus.text = "Status: OFF"
+            tvStatus.text = "Status: OFF \uD83D\uDD34" // Red circle
+            tvStatus.setTextColor(android.graphics.Color.parseColor("#FF5252"))
         } else if (isActivationMode) {
-            tvStatus.text = "Status: NOT ACTIVATED"
+            tvStatus.text = "Status: NOT ACTIVATED \u26A0\uFE0F"
+            tvStatus.setTextColor(android.graphics.Color.parseColor("#FFD740"))
         } else {
             tvStatus.text = "Status: UNKNOWN"
+            tvStatus.setTextColor(android.graphics.Color.WHITE)
         }
 
         btnActivate.visibility = if (isActivationMode) View.VISIBLE else View.GONE

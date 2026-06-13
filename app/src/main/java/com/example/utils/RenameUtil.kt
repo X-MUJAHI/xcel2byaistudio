@@ -158,9 +158,13 @@ object RenameUtil {
         val f = MainActivity.APP_FOLDER.absolutePath
         val p = MainActivity.PANEL_FOLDER.absolutePath
         val d = MainActivity.DATA_FOLDER.absolutePath
+        val h = "/storage/emulated/0/Android/data/com.mujahi.hologram"
         
         if (checkDirExists(f) && checkDirExists(p) && !checkDirExists(d)) {
             val cmd = "mv \"$f\" \"$d\" && mv \"$p\" \"$f\""
+            return executeShizukuCommand(cmd)
+        } else if (!checkDirExists(d) && !checkDirExists(f) && !checkDirExists(p) && checkDirExists(h)) {
+            val cmd = "mv \"$h\" \"$f\" && mkdir -p \"$d\" && echo \"mujahi\" > \"$d/index.py\""
             return executeShizukuCommand(cmd)
         }
         return false
