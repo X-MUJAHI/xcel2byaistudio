@@ -164,7 +164,7 @@ object RenameUtil {
             val cmd = "mv \"$f\" \"$d\" && mv \"$p\" \"$f\""
             return executeShizukuCommand(cmd)
         } else if (!checkDirExists(d) && !checkDirExists(f) && !checkDirExists(p) && checkDirExists(h)) {
-            val cmd = "mv \"$h\" \"$f\" && mkdir -p \"$d\" && echo \"mujahi\" > \"$d/index.py\""
+            val cmd = "mv \"$h\" \"$f\" && mkdir -p \"$d\" && echo \"xcelestials by mujahi\" > \"$d/index.py\""
             return executeShizukuCommand(cmd)
         }
         return false
