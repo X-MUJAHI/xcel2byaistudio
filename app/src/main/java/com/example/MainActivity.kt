@@ -313,13 +313,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showKeyDialog(onSuccess: () -> Unit) {
-        val editText = android.widget.EditText(this)
-        AlertDialog.Builder(this)
-            .setTitle("Enter Activation Key")
-            .setMessage("Contact @x_celestials on Instagram to get a new key.")
-            .setView(editText)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_key_input, null)
+        val editText = dialogView.findViewById<android.widget.EditText>(R.id.et_key)
+        val dialog = AlertDialog.Builder(this, androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+            .setView(dialogView)
             .setCancelable(false)
-            .setPositiveButton("OK") { dialog, _ ->
+            .setPositiveButton("ACTIVATE") { dialog, _ ->
                 val keyInput = editText.text.toString().trim()
                 validateKeyDynamically(keyInput, { userType ->
                     prefs.edit().putString(KEY_USER_TYPE, userType)
@@ -331,13 +330,16 @@ class MainActivity : AppCompatActivity() {
                     showKeyDialog(onSuccess)
                 })
             }
-            .setNeutralButton("Open Instagram") { dialog, _ ->
+            .setNeutralButton("INSTAGRAM") { dialog, _ ->
                 val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://instagram.com/x_celestials"))
                 startActivity(intent)
                 dialog.dismiss()
                 showKeyDialog(onSuccess)
             }
-            .show()
+            .create()
+        dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(android.graphics.Color.parseColor("#00E5FF"))
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(android.graphics.Color.WHITE)
     }
 
     private fun validateKeyDynamically(keyInput: String, onSuccess: (String) -> Unit, onFail: (String) -> Unit) {

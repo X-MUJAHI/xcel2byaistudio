@@ -8,6 +8,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -100,6 +102,11 @@ class SettingsFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_settings, container, false)
         
+        view.findViewById<ImageView>(R.id.btn_back).setOnClickListener {
+            parentFragmentManager.popBackStack()
+        }
+        view.findViewById<ImageView>(R.id.btn_back).visibility = View.VISIBLE
+
         tvCurrentScript = view.findViewById(R.id.tv_current_script)
         val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
         val currentScript = prefs.getString("CURRENT_SCRIPT", "xcel1.zip (Default)")
@@ -126,6 +133,13 @@ class SettingsFragment : Fragment() {
             val uri = Uri.parse("content://com.android.externalstorage.documents/document/primary%3AAndroid%2Fdata")
             intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
             startActivityForResult(intent, 2001)
+        }
+
+        view.findViewById<Button>(R.id.btn_delete_reports).setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, DeleteReportsFragment())
+                .addToBackStack(null)
+                .commit()
         }
         
         return view
