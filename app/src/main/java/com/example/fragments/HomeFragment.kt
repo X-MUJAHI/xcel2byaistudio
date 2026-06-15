@@ -27,6 +27,7 @@ class HomeFragment : Fragment() {
     private lateinit var btnTurnOff: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var tvProgress: TextView
+    private lateinit var tvVersion: TextView
 
     private var isOn = false
     private var isActivationMode = false
@@ -50,6 +51,14 @@ class HomeFragment : Fragment() {
         btnTurnOff = view.findViewById(R.id.btn_turn_off)
         progressBar = view.findViewById(R.id.progress_bar)
         tvProgress = view.findViewById(R.id.tv_progress)
+        tvVersion = view.findViewById(R.id.tv_version)
+
+        try {
+            val vers = resources.openRawResource(R.raw.version).bufferedReader().use { it.readText() }.trim()
+            tvVersion.text = "v$vers"
+        } catch (e: Exception) {
+            tvVersion.text = "v1.0"
+        }
 
         view.findViewById<Button>(R.id.btn_telegram).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://t.me/xcel1_panel")))
@@ -88,9 +97,11 @@ class HomeFragment : Fragment() {
         super.onPause()
         countDownTimer?.cancel()
         statusAnimator?.cancel()
+        glowAnimator?.cancel()
     }
 
     private var statusAnimator: android.animation.ObjectAnimator? = null
+    private var glowAnimator: android.animation.ObjectAnimator? = null
 
     private fun updateUIState() {
         val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
@@ -107,26 +118,45 @@ class HomeFragment : Fragment() {
         isActivationMode = fExists && !pExists && !dExists
 
         statusAnimator?.cancel()
+        glowAnimator?.cancel()
         tvStatus.scaleX = 1f
         tvStatus.scaleY = 1f
         tvStatus.alpha = 1f
+        btnTurnOff.scaleX = 1f
+        btnTurnOff.scaleY = 1f
+        btnTurnOff.alpha = 1f
 
         if (isOn) {
             tvStatus.text = "Status: ON \uD83D\uDFE2" // Green circle
             tvStatus.setTextColor(android.graphics.Color.parseColor("#00E676"))
             
-            // Smooth pulse animation
+            // Smooth pulse animation for status
             statusAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
                 tvStatus,
                 android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 1.0f, 1.05f),
-                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f, 1.05f),
-                android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 1.0f, 0.8f)
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f, 1.05f)
             ).apply {
                 duration = 800
                 repeatCount = android.animation.ObjectAnimator.INFINITE
                 repeatMode = android.animation.ObjectAnimator.REVERSE
                 start()
             }
+            
+            // Premium Breathing glow for Turn Off button
+            glowAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                btnTurnOff,
+                android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 0.7f, 1.0f),
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 0.98f, 1.02f),
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.98f, 1.02f)
+            ).apply {
+                duration = 1000
+                repeatCount = android.animation.ObjectAnimator.INFINITE
+                repeatMode = android.animation.ObjectAnimator.REVERSE
+                // use fast out slow in interpolator
+                interpolator = android.view.animation.PathInterpolator(0.4f, 0.0f, 0.2f, 1.0f)
+                start()
+            }
+            
         } else if (isOff) {
             tvStatus.text = "Status: OFF \uD83D\uDD34" // Red circle
             tvStatus.setTextColor(android.graphics.Color.parseColor("#FF5252"))

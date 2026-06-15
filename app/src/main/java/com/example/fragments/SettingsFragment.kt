@@ -102,15 +102,30 @@ class SettingsFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_settings, container, false)
         
+        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
+        
         view.findViewById<ImageView>(R.id.btn_back).setOnClickListener {
-            parentFragmentManager.popBackStack()
+            val parentActivity = requireActivity() as MainActivity
+            parentActivity.switchFragment(HomeFragment())
         }
         view.findViewById<ImageView>(R.id.btn_back).visibility = View.VISIBLE
 
         tvCurrentScript = view.findViewById(R.id.tv_current_script)
-        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
         val currentScript = prefs.getString("CURRENT_SCRIPT", "xcel1.zip (Default)")
         tvCurrentScript.text = "Current: $currentScript"
+
+        val switchHologram = view.findViewById<Switch>(R.id.switch_hologram)
+        val switchAntiBan = view.findViewById<Switch>(R.id.switch_anti_ban)
+
+        switchHologram.isChecked = prefs.getBoolean("hologram_on", false)
+        switchAntiBan.isChecked = prefs.getBoolean("anti_ban_on", false)
+
+        switchHologram.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("hologram_on", isChecked).apply()
+        }
+        switchAntiBan.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("anti_ban_on", isChecked).apply()
+        }
 
         view.findViewById<Button>(R.id.btn_new_script).setOnClickListener {
             if (!RenameUtil.shizukuAvailable()) {

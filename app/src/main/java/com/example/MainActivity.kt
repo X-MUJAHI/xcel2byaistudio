@@ -114,7 +114,19 @@ class MainActivity : AppCompatActivity() {
             if (!lockToUpdate) switchFragment(AboutFragment())
         }
         ivSettings.setOnClickListener {
-            if (!lockToUpdate) switchFragment(SettingsFragment())
+            if (!lockToUpdate) {
+                val currentFrag = supportFragmentManager.findFragmentById(R.id.fragment_container)
+                if (currentFrag !is SettingsFragment) {
+                    ivSettings.animate()
+                        .rotation(45f)
+                        .scaleX(1.2f).scaleY(1.2f)
+                        .setDuration(300).start()
+                    ivSettings.setColorFilter(android.graphics.Color.parseColor("#00E5FF")) // Little glow color
+                    switchFragment(SettingsFragment())
+                } else {
+                    switchFragment(HomeFragment()) // This implicitly calls the back-rotation
+                }
+            }
         }
 
         Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
@@ -126,6 +138,10 @@ class MainActivity : AppCompatActivity() {
             if (doc.exists()) {
                 val timestampStr = doc.getString("app_expire_date") ?: "2099-01-01"
                 prefs.edit().putString("app_expire_date", timestampStr).apply()
+                val reqVersion = doc.getString("app_version") ?: ""
+                if (reqVersion.isNotEmpty()) {
+                    prefs.edit().putString("app_version", reqVersion).apply()
+                }
             }
             performExpirationCheckAndProceed()
         }.addOnFailureListener {
@@ -156,7 +172,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        isExpired = System.currentTimeMillis() > expireDateMillis
+        val localVersion = try {
+            resources.openRawResource(R.raw.version).bufferedReader().use { it.readText() }.trim()
+        } catch (e: Exception) { "1.0" }
+        
+        val remoteVersion = prefs.getString("app_version", localVersion) ?: localVersion
+        
+        var forceUpdate = false
+        if (remoteVersion != localVersion && remoteVersion.isNotEmpty()) {
+            forceUpdate = true
+        }
+
+        isExpired = System.currentTimeMillis() > expireDateMillis || forceUpdate
         lockToUpdate = isExpired
         permissionReady = false
         keyReady = false
@@ -452,6 +479,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun switchFragment(fragment: Fragment) {
+        val currentFrag = supportFragmentManager.findFragmentById(R.id.fragment_container)
+        if (currentFrag is SettingsFragment && fragment !is SettingsFragment) {
+            ivSettings.animate()
+                .rotation(0f)
+                .scaleX(1f).scaleY(1f)
+                .setDuration(300).start()
+            ivSettings.clearColorFilter()
+        }
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, fragment)
             .commit()
