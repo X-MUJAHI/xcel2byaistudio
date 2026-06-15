@@ -163,9 +163,14 @@ object RenameUtil {
         if (checkDirExists(f) && checkDirExists(p) && !checkDirExists(d)) {
             val cmd = "mv \"$f\" \"$d\" && mv \"$p\" \"$f\""
             return executeShizukuCommand(cmd)
-        } else if (!checkDirExists(d) && !checkDirExists(f) && !checkDirExists(p) && checkDirExists(h)) {
-            val cmd = "mv \"$h\" \"$f\" && mkdir -p \"$d\" && echo \"xcelestials by mujahi\" > \"$d/index.py\""
-            return executeShizukuCommand(cmd)
+        } else if (!checkDirExists(f) && !checkDirExists(p) && checkDirExists(h)) {
+            if (!checkDirExists(d)) {
+                val cmd = "mv \"$h\" \"$f\" && mkdir -p \"$d\" && echo \"xcelestials by mujahi\" > \"$d/index.py\""
+                return executeShizukuCommand(cmd)
+            } else {
+                val cmd = "mv \"$h\" \"$f\""
+                return executeShizukuCommand(cmd)
+            }
         }
         return false
     }

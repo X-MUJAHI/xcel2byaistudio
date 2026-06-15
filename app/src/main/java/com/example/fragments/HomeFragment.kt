@@ -112,7 +112,7 @@ class HomeFragment : Fragment() {
         isOn = fExists && dExists && !pExists
         
         val isOffOriginal = fExists && pExists && !dExists
-        val isOffHologram = !fExists && !pExists && !dExists && hExists
+        val isOffHologram = !fExists && !pExists && hExists
         val isOff = isOffOriginal || isOffHologram
         
         isActivationMode = fExists && !pExists && !dExists
