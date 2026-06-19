@@ -31,11 +31,30 @@ class AppManagerFragment : Fragment() {
     private val appsList = mutableListOf<AppItem>()
     private lateinit var adapter: AppAdapter
 
+    private var showSystemApps = false
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_app_manager, container, false)
         
         view.findViewById<ImageView>(R.id.iv_back).setOnClickListener {
             (requireActivity() as MainActivity).switchFragment(HomeFragment())
+        }
+
+        val btnMenuMore = view.findViewById<ImageView>(R.id.btn_menu_more)
+        btnMenuMore.setOnClickListener {
+            val popup = android.widget.PopupMenu(context, it)
+            popup.menu.add(0, 1, 0, if (showSystemApps) "Hide System Apps" else "Show System Apps")
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> {
+                        showSystemApps = !showSystemApps
+                        loadApps()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            popup.show()
         }
 
         val rvApps = view.findViewById<RecyclerView>(R.id.rv_apps)
@@ -70,9 +89,11 @@ class AppManagerFragment : Fragment() {
             val packages = pm.getInstalledPackages(0)
             appsList.clear()
             for (pi in packages) {
-                // Ignore our own app or completely system if you want, but user said all installed apps
                 try {
                     val appInfo = pi.applicationInfo ?: continue
+                    val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    if (!showSystemApps && isSystemApp) continue
+
                     val name = pm.getApplicationLabel(appInfo).toString()
                     val packageName = pi.packageName
                     val sourceDir = appInfo.sourceDir
@@ -93,29 +114,46 @@ class AppManagerFragment : Fragment() {
     }
 
     private fun showAppOptions(app: AppItem) {
-        val builder = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
-        builder.setTitle(app.name)
-        builder.setMessage("Package: ${app.packageName}\nDir: ${app.sourceDir}\nSize: ${app.size / (1024*1024)} MB")
+        val dialogView = layoutInflater.inflate(R.layout.dialog_app_info, null)
+        val dialog = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<ImageView>(R.id.dialog_app_icon).setImageDrawable(app.icon)
+        dialogView.findViewById<TextView>(R.id.dialog_app_name).text = app.name
         
-        builder.setPositiveButton("UNINSTALL") { _, _ ->
+        try {
+            val pInfo = requireContext().packageManager.getPackageInfo(app.packageName, 0)
+            dialogView.findViewById<TextView>(R.id.dialog_app_version).text = "v${pInfo.versionName} (${pInfo.versionCode})"
+        } catch (e: Exception) {
+            dialogView.findViewById<TextView>(R.id.dialog_app_version).text = "vUnknown"
+        }
+
+        dialogView.findViewById<TextView>(R.id.dialog_app_package).text = "Package: ${app.packageName}"
+        dialogView.findViewById<TextView>(R.id.dialog_app_dir).text = "Dir: ${app.sourceDir}"
+        dialogView.findViewById<TextView>(R.id.dialog_app_size).text = "Size: ${app.size / (1024*1024)} MB"
+
+        dialogView.findViewById<View>(R.id.btn_dialog_uninstall).setOnClickListener {
             Thread {
                 val success = RenameUtil.executeShizukuCommand("pm uninstall ${app.packageName}")
                 requireActivity().runOnUiThread {
                     if (success) {
                         Toast.makeText(context, "Uninstalled ${app.name}", Toast.LENGTH_SHORT).show()
                         loadApps()
+                        dialog.dismiss()
                     } else {
                         Toast.makeText(context, "Failed to uninstall", Toast.LENGTH_SHORT).show()
                     }
                 }
             }.start()
         }
-        builder.setNegativeButton("EXTRACT") { _, _ ->
-            // Simulating extraction
+
+        dialogView.findViewById<View>(R.id.btn_dialog_extract).setOnClickListener {
             Toast.makeText(context, "Extracting ${app.name}...", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
         }
-        builder.setNeutralButton("CANCEL", null)
-        builder.show()
+
+        dialog.show()
     }
 
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.VH>() {

@@ -146,6 +146,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_app_manager -> switchFragment(com.example.fragments.AppManagerFragment())
                 R.id.nav_background_manager -> switchFragment(com.example.fragments.ProcessManagerFragment())
                 R.id.nav_execute_commands -> switchFragment(com.example.fragments.ShellTerminalFragment())
+                R.id.nav_wifi -> switchFragment(com.example.fragments.WifiManagerFragment())
             }
             drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
             true
@@ -553,6 +554,24 @@ class MainActivity : AppCompatActivity() {
                 .setDuration(300).start()
             ivSettings.clearColorFilter()
         }
+        
+        val isMainPage = fragment is com.example.fragments.HomeFragment || 
+                         fragment is com.example.fragments.MessageFragment || 
+                         fragment is com.example.fragments.ProfileFragment || 
+                         fragment is com.example.fragments.AboutFragment
+        
+        val ivMenu: ImageView = findViewById(R.id.iv_menu)
+        if (isMainPage) {
+            ivSettings.visibility = View.VISIBLE
+            ivMenu.visibility = View.VISIBLE
+        } else if (fragment is SettingsFragment) {
+            ivSettings.visibility = View.VISIBLE
+            ivMenu.visibility = View.GONE
+        } else {
+            ivSettings.visibility = View.GONE
+            ivMenu.visibility = View.GONE
+        }
+
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, fragment)
             .commit()

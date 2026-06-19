@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_weight="1"
-            android:text="App Manager"
+            android:text="WiFi Manager"
             android:textColor="#00E5FF"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -43,41 +43,35 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp">
-        <Button
-            android:id="@+id/btn_sort_date"
+        android:padding="16dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_wifi_status"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Date"
-            android:textSize="12sp"
-            android:layout_marginEnd="4dp"
-            android:backgroundTint="#1F2937"
-            android:textColor="#FFFFFF" />
-        <Button
-            android:id="@+id/btn_sort_size"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Size"
-            android:textSize="12sp"
-            android:layout_marginEnd="4dp"
-            android:backgroundTint="#1F2937"
-            android:textColor="#FFFFFF" />
-        <Button
-            android:id="@+id/btn_sort_usage"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Usage"
-            android:textSize="12sp"
-            android:backgroundTint="#1F2937"
-            android:textColor="#FFFFFF" />
+            android:text="Checking WiFi Status..."
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <Switch
+            android:id="@+id/switch_wifi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
     </LinearLayout>
     
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:text="Saved WiFi Passwords"
+        android:textColor="#00E5FF"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
+
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_apps"
+        android:id="@+id/rv_wifi"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"

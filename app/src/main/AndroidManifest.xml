@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     
     <!-- Shizuku API Permission -->
     <uses-permission android:name="rikka.shizuku.permission.API_V11" />
@@ -48,6 +50,10 @@
 
         <receiver
             android:name=".utils.AlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".receivers.ScriptReceiver"
             android:exported="false" />
 
         <!-- Shizuku Provider -->

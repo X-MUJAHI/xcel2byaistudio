@@ -413,9 +413,31 @@ class HomeFragment : Fragment() {
                 val todayStart = cal.timeInMillis
                 val todayEnd = System.currentTimeMillis()
                 
-                val statsToday = usageStatsManager.queryAndAggregateUsageStats(todayStart, todayEnd)
-                val ffStatsToday = statsToday["com.dts.freefiremax"]
-                val timeToday = ffStatsToday?.totalTimeInForeground ?: 0L
+                var timeToday = 0L
+                val eventsToday = usageStatsManager.queryEvents(todayStart, todayEnd)
+                var lastTime = todayStart
+                val event = android.app.usage.UsageEvents.Event()
+                var isForeground = false
+                while (eventsToday.hasNextEvent()) {
+                    eventsToday.getNextEvent(event)
+                    if (event.packageName == "com.dts.freefiremax") {
+                        if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == 1) { // 1 is MOVE_TO_FOREGROUND
+                            if (!isForeground) {
+                                isForeground = true
+                                lastTime = event.timeStamp
+                            }
+                        } else if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED || event.eventType == 2) { // 2 is MOVE_TO_BACKGROUND
+                            if (isForeground) {
+                                isForeground = false
+                                timeToday += (event.timeStamp - lastTime)
+                            }
+                        }
+                    }
+                }
+                if (isForeground) {
+                    timeToday += (todayEnd - lastTime)
+                }
+
                 val hoursToday = timeToday / 3600000
                 val minsToday = (timeToday % 3600000) / 60000
                 tvPlaytimeToday.text = "Today: ${hoursToday}h ${minsToday}m"
@@ -425,9 +447,30 @@ class HomeFragment : Fragment() {
                 val yesterdayStart = cal.timeInMillis
                 val yesterdayEnd = todayStart
                 
-                val statsYesterday = usageStatsManager.queryAndAggregateUsageStats(yesterdayStart, yesterdayEnd)
-                val ffStatsYesterday = statsYesterday["com.dts.freefiremax"]
-                val timeYesterday = ffStatsYesterday?.totalTimeInForeground ?: 0L
+                var timeYesterday = 0L
+                val eventsYesterday = usageStatsManager.queryEvents(yesterdayStart, yesterdayEnd)
+                var lastTimeY = yesterdayStart
+                isForeground = false
+                while (eventsYesterday.hasNextEvent()) {
+                    eventsYesterday.getNextEvent(event)
+                    if (event.packageName == "com.dts.freefiremax") {
+                        if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == 1) { 
+                            if (!isForeground) {
+                                isForeground = true
+                                lastTimeY = event.timeStamp
+                            }
+                        } else if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED || event.eventType == 2) { 
+                            if (isForeground) {
+                                isForeground = false
+                                timeYesterday += (event.timeStamp - lastTimeY)
+                            }
+                        }
+                    }
+                }
+                if (isForeground) {
+                    timeYesterday += (yesterdayEnd - lastTimeY)
+                }
+
                 val hoursYest = timeYesterday / 3600000
                 val minsYest = (timeYesterday % 3600000) / 60000
                 tvPlaytimeYesterday.text = "Yesterday: ${hoursYest}h ${minsYest}m"
