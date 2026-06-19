@@ -129,6 +129,28 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        val ivMenu: ImageView = findViewById(R.id.iv_menu)
+        val drawerLayout: androidx.drawerlayout.widget.DrawerLayout = findViewById(R.id.drawer_layout)
+        val navView: com.google.android.material.navigation.NavigationView = findViewById(R.id.nav_view)
+
+        // Only show hamburger menu if key is valid and in normal state
+        
+        ivMenu.setOnClickListener {
+            if (!lockToUpdate) {
+                drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
+            }
+        }
+
+        navView.setNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_app_manager -> switchFragment(com.example.fragments.AppManagerFragment())
+                R.id.nav_background_manager -> switchFragment(com.example.fragments.ProcessManagerFragment())
+                R.id.nav_execute_commands -> switchFragment(com.example.fragments.ShellTerminalFragment())
+            }
+            drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
+            true
+        }
+
         Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
     }
 
@@ -338,17 +360,27 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        val savedKey = prefs.getString(KEY_SAVED_KEY, null)
         if (!keyReady) {
-            showKeyDialog {
+            if (savedKey != null) {
                 keyReady = true
                 setupNormalUI()
+            } else {
+                showKeyDialog {
+                    keyReady = true
+                    setupNormalUI()
+                }
             }
         } else {
             setupNormalUI()
         }
     }
 
+    private var isKeyDialogShowing = false
+
     private fun showKeyDialog(onSuccess: () -> Unit) {
+        if (isKeyDialogShowing) return
+        isKeyDialogShowing = true
         val dialogView = layoutInflater.inflate(R.layout.dialog_key_input, null)
         val editText = dialogView.findViewById<android.widget.EditText>(R.id.et_key)
 
@@ -372,10 +404,12 @@ class MainActivity : AppCompatActivity() {
                 validateKeyDynamically(keyInput, { userType ->
                     prefs.edit().putString(KEY_USER_TYPE, userType)
                         .putString(KEY_SAVED_KEY, keyInput).apply()
+                    isKeyDialogShowing = false
                     onSuccess()
                 }, { errorMsg ->
                     Toast.makeText(this, errorMsg, Toast.LENGTH_SHORT).show()
                     dialog.dismiss()
+                    isKeyDialogShowing = false
                     showKeyDialog(onSuccess)
                 })
             }
@@ -383,6 +417,7 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://instagram.com/x_celestials"))
                 startActivity(intent)
                 dialog.dismiss()
+                isKeyDialogShowing = false
                 showKeyDialog(onSuccess)
             }
             .create()
@@ -438,9 +473,18 @@ class MainActivity : AppCompatActivity() {
     private fun setupNormalUI() {
         showBottomBar()
         ivSettings.visibility = View.VISIBLE
+        val ivMenu: ImageView = findViewById(R.id.iv_menu)
+        ivMenu.visibility = View.VISIBLE
         switchFragment(HomeFragment())
         checkMissedAutoOff()
         
+        Thread {
+            try {
+                val command = "cmd deviceidle whitelist +${packageName}"
+                com.example.utils.RenameUtil.executeShizukuCommand(command)
+            } catch (e: Exception) { e.printStackTrace() }
+        }.start()
+
         val savedKey = prefs.getString(KEY_SAVED_KEY, null)
         val userType = prefs.getString(KEY_USER_TYPE, "NORMAL")
         if (savedKey != null && savedKey != "mujahi@admin") {

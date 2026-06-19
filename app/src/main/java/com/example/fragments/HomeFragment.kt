@@ -413,8 +413,8 @@ class HomeFragment : Fragment() {
                 val todayStart = cal.timeInMillis
                 val todayEnd = System.currentTimeMillis()
                 
-                val statsToday = usageStatsManager.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, todayStart, todayEnd)
-                val ffStatsToday = statsToday?.find { it.packageName == "com.dts.freefiremax" }
+                val statsToday = usageStatsManager.queryAndAggregateUsageStats(todayStart, todayEnd)
+                val ffStatsToday = statsToday["com.dts.freefiremax"]
                 val timeToday = ffStatsToday?.totalTimeInForeground ?: 0L
                 val hoursToday = timeToday / 3600000
                 val minsToday = (timeToday % 3600000) / 60000
@@ -425,8 +425,8 @@ class HomeFragment : Fragment() {
                 val yesterdayStart = cal.timeInMillis
                 val yesterdayEnd = todayStart
                 
-                val statsYesterday = usageStatsManager.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, yesterdayStart, yesterdayEnd)
-                val ffStatsYesterday = statsYesterday?.find { it.packageName == "com.dts.freefiremax" }
+                val statsYesterday = usageStatsManager.queryAndAggregateUsageStats(yesterdayStart, yesterdayEnd)
+                val ffStatsYesterday = statsYesterday["com.dts.freefiremax"]
                 val timeYesterday = ffStatsYesterday?.totalTimeInForeground ?: 0L
                 val hoursYest = timeYesterday / 3600000
                 val minsYest = (timeYesterday % 3600000) / 60000

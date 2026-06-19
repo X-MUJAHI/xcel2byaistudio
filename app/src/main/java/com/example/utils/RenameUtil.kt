@@ -129,6 +129,7 @@ object RenameUtil {
         }
     }
 
+
     fun checkDirExists(path: String): Boolean {
         if (!shizukuAvailable()) {
             return File(path).exists()
