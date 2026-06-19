@@ -203,28 +203,43 @@ class SettingsFragment : Fragment() {
 
             val templates = arrayOf(
                 "Custom",
-                "2.0k (3210x1440)",
-                "2.1k (3290x1476)",
-                "2.2k (3370x1512)",
-                "2.3k (3450x1548)",
-                "2.4k (3531x1584)",
-                "2.5k (3611x1620)",
-                "2.6k (3691x1656)",
-                "2.7k (3771x1692)",
-                "2.8k (3852x1728)",
-                "2.9k (3932x1764)",
-                "3.0k (4012x1800)",
-                "3.1k (4092x1836)",
-                "3.2k (4173x1872)",
-                "3.3k (4253x1908)",
-                "3.4k (4333x1944)",
-                "3.5k (4413x1980)",
-                "3.6k (4494x2016)",
-                "3.7k (4574x2052)",
-                "3.8k (4654x2088)",
-                "3.9k (4734x2124)"
+                "3.2K 4173 × 1872",
+                "2k: 3210× 1440 (+60)",
+                "2.1k : 3290.25× 1476.0",
+                "2.2k : 3370.5× 1512.0",
+                "2.3k: 3450.75× 1548.0",
+                "2.4k: 3531.0× 1584.0",
+                "2.5k: 3611.25× 1620.0",
+                "2.6k: 3691.5× 1656.0",
+                "2.7k: 3771.75× 1692.0",
+                "2.8k: 3852.0× 1728.0⭐(1800💀)",
+                "2.9k: 3932.25× 1764.0",
+                "3.0k: 4012.5× 1800.0",
+                "3.1k: 4092.75× 1836.0",
+                "3.2k: 4173.0× 1872.0 (+78)",
+                "3.3k: 4253.25× 1908.0",
+                "3.4k: 4333.5× 1944.0",
+                "3.5k: 4413.75× 1980.0",
+                "3.6k: 4494.0× 2016.0",
+                "3.7k: 4574.25× 2052.0",
+                "3.8k: 4654.5× 2088.0",
+                "3.9k : 4734.75× 2124.0"
             )
             
+            val currentRes = tvResolution.text.toString().replace("Resolution: ", "")
+            if (currentRes != "--x--" && currentRes != "Unknown" && currentRes.contains("x")) {
+                val parts = currentRes.split("x")
+                if (parts.size == 2) {
+                    etWidth.hint = "Current Width: ${parts[0]}"
+                    etHeight.hint = "Current Height: ${parts[1]}"
+                }
+            }
+            
+            val currentDpi = tvDpi.text.toString().replace("DPI/Density: ", "")
+            if (currentDpi != "--" && currentDpi != "Unknown") {
+                etDensity.hint = "Current Density: $currentDpi"
+            }
+
             val adapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, templates)
             spinner.adapter = adapter
 
@@ -232,11 +247,9 @@ class SettingsFragment : Fragment() {
                 override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                     if (position > 0) {
                         val selection = templates[position]
-                        val regex = Regex("\\((\\d+)x(\\d+)\\)")
+                        val regex = Regex("(\\d+)(?:\\.\\d+)?\\s*[×xX]\\s*(\\d+)(?:\\.\\d+)?")
                         val match = regex.find(selection)
                         if (match != null) {
-                            etWidth.setText(match.groupValues[2])  // Wait, standard Android size is shortxlong. E.g. 1080x2400. The templates provided are 3210x1440. So height x width?
-                            // Generally it's short x long in "wm size" for portrait. Assuming template format is heightxwidth: "3210x1440"
                             etHeight.setText(match.groupValues[1])
                             etWidth.setText(match.groupValues[2])
                         }

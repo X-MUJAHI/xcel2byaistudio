@@ -114,10 +114,39 @@ class HomeFragment : Fragment() {
         return view
     }
 
+    private val pingHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val pingRunnable = object : Runnable {
+        override fun run() {
+            Thread {
+                try {
+                    val process = Runtime.getRuntime().exec("ping -c 1 -w 2 8.8.8.8")
+                    val returnVal = process.waitFor()
+                    if (returnVal == 0) {
+                        val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+                        var time = "--"
+                        for (line in reader.lines()) {
+                            if (line.contains("time=")) {
+                                time = line.substringAfter("time=").substringBefore(" ")
+                                break
+                            }
+                        }
+                        requireActivity().runOnUiThread { tvPing.text = "Ping: ${time}ms" }
+                    } else {
+                        requireActivity().runOnUiThread { tvPing.text = "Ping: Error" }
+                    }
+                } catch (e: Exception) {
+                    requireActivity().runOnUiThread { tvPing.text = "Ping: Error" }
+                }
+            }.start()
+            pingHandler.postDelayed(this, 3000)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         updateUIState()
         startTimerUpdate()
+        pingHandler.post(pingRunnable)
     }
 
     override fun onPause() {
@@ -125,6 +154,7 @@ class HomeFragment : Fragment() {
         countDownTimer?.cancel()
         statusAnimator?.cancel()
         glowAnimator?.cancel()
+        pingHandler.removeCallbacks(pingRunnable)
     }
 
     private var statusAnimator: android.animation.ObjectAnimator? = null
@@ -363,29 +393,6 @@ class HomeFragment : Fragment() {
             tvBattery.text = "Battery: --%"
         }
         
-        // Ping
-        Thread {
-            try {
-                val process = Runtime.getRuntime().exec("ping -c 1 8.8.8.8")
-                val returnVal = process.waitFor()
-                if (returnVal == 0) {
-                    val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
-                    var time = "--"
-                    for (line in reader.lines()) {
-                        if (line.contains("time=")) {
-                            time = line.substringAfter("time=").substringBefore(" ")
-                            break
-                        }
-                    }
-                    requireActivity().runOnUiThread { tvPing.text = "Ping: ${time}ms" }
-                } else {
-                    requireActivity().runOnUiThread { tvPing.text = "Ping: Error" }
-                }
-            } catch (e: Exception) {
-                requireActivity().runOnUiThread { tvPing.text = "Ping: Error" }
-            }
-        }.start()
-
         // FPS
         val windowManager = requireContext().getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
         val display = windowManager.defaultDisplay
