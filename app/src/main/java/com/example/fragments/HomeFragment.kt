@@ -23,11 +23,16 @@ class HomeFragment : Fragment() {
     private lateinit var tvStatus: TextView
     private lateinit var tvTimer: TextView
     private lateinit var btnActivate: Button
-    private lateinit var btnTurnOn: Button
-    private lateinit var btnTurnOff: Button
+    private lateinit var btnTogglePower: Button
+    private lateinit var btnOpenGame: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var tvProgress: TextView
     private lateinit var tvVersion: TextView
+    private lateinit var tvPing: TextView
+    private lateinit var tvBattery: TextView
+    private lateinit var tvFps: TextView
+    private lateinit var tvPlaytimeToday: TextView
+    private lateinit var tvPlaytimeYesterday: TextView
 
     private var isOn = false
     private var isActivationMode = false
@@ -47,11 +52,16 @@ class HomeFragment : Fragment() {
         tvStatus = view.findViewById(R.id.tv_status)
         tvTimer = view.findViewById(R.id.tv_timer)
         btnActivate = view.findViewById(R.id.btn_activate)
-        btnTurnOn = view.findViewById(R.id.btn_turn_on)
-        btnTurnOff = view.findViewById(R.id.btn_turn_off)
+        btnTogglePower = view.findViewById(R.id.btn_toggle_power)
+        btnOpenGame = view.findViewById(R.id.btn_open_game)
         progressBar = view.findViewById(R.id.progress_bar)
         tvProgress = view.findViewById(R.id.tv_progress)
         tvVersion = view.findViewById(R.id.tv_version)
+        tvPing = view.findViewById(R.id.tv_ping)
+        tvBattery = view.findViewById(R.id.tv_battery)
+        tvFps = view.findViewById(R.id.tv_fps)
+        tvPlaytimeToday = view.findViewById(R.id.tv_playtime_today)
+        tvPlaytimeYesterday = view.findViewById(R.id.tv_playtime_yesterday)
 
         try {
             val vers = resources.openRawResource(R.raw.version).bufferedReader().use { it.readText() }.trim()
@@ -81,8 +91,25 @@ class HomeFragment : Fragment() {
         }
 
         btnActivate.setOnClickListener { startFirstTimeActivation() }
-        btnTurnOn.setOnClickListener { handleTurnOn() }
-        btnTurnOff.setOnClickListener { handleTurnOff() }
+        
+        btnTogglePower.setOnClickListener {
+            if (isOn) {
+                handleTurnOff()
+            } else {
+                handleTurnOn()
+            }
+        }
+        
+        btnOpenGame.setOnClickListener {
+            val launchIntent = requireContext().packageManager.getLaunchIntentForPackage("com.dts.freefiremax")
+            if (launchIntent != null) {
+                startActivity(launchIntent)
+            } else {
+                Toast.makeText(context, "Free Fire MAX not found", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        fetchSystemStats()
 
         return view
     }
@@ -122,13 +149,17 @@ class HomeFragment : Fragment() {
         tvStatus.scaleX = 1f
         tvStatus.scaleY = 1f
         tvStatus.alpha = 1f
-        btnTurnOff.scaleX = 1f
-        btnTurnOff.scaleY = 1f
-        btnTurnOff.alpha = 1f
+        btnTogglePower.scaleX = 1f
+        btnTogglePower.scaleY = 1f
+        btnTogglePower.alpha = 1f
 
         if (isOn) {
             tvStatus.text = "Status: ON \uD83D\uDFE2" // Green circle
             tvStatus.setTextColor(android.graphics.Color.parseColor("#00E676"))
+            
+            btnTogglePower.text = "TURN OFF"
+            btnTogglePower.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#F44336"))
+            btnTogglePower.setTextColor(android.graphics.Color.WHITE)
             
             // Smooth pulse animation for status
             statusAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
@@ -144,7 +175,7 @@ class HomeFragment : Fragment() {
             
             // Premium Breathing glow for Turn Off button
             glowAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
-                btnTurnOff,
+                btnTogglePower,
                 android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 0.7f, 1.0f),
                 android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 0.98f, 1.02f),
                 android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.98f, 1.02f)
@@ -160,6 +191,11 @@ class HomeFragment : Fragment() {
         } else if (isOff) {
             tvStatus.text = "Status: OFF \uD83D\uDD34" // Red circle
             tvStatus.setTextColor(android.graphics.Color.parseColor("#FF5252"))
+
+            btnTogglePower.text = "TURN ON"
+            btnTogglePower.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#00E5FF"))
+            btnTogglePower.setTextColor(android.graphics.Color.parseColor("#151A22"))
+
         } else if (isActivationMode) {
             tvStatus.text = "Status: NOT ACTIVATED \u26A0\uFE0F"
             tvStatus.setTextColor(android.graphics.Color.parseColor("#FFD740"))
@@ -169,8 +205,7 @@ class HomeFragment : Fragment() {
         }
 
         btnActivate.visibility = if (isActivationMode) View.VISIBLE else View.GONE
-        btnTurnOn.visibility = if (isOff) View.VISIBLE else View.GONE
-        btnTurnOff.visibility = if (isOn) View.VISIBLE else View.GONE
+        btnTogglePower.visibility = if (isOn || isOff) View.VISIBLE else View.GONE
     }
 
     private fun startTimerUpdate() {
@@ -273,18 +308,7 @@ class HomeFragment : Fragment() {
                         val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
                         prefs.edit().putString("CURRENT_SCRIPT", File(realPath).name).apply()
 
-                        Toast.makeText(ctx, "Activation successful! Launching...", Toast.LENGTH_SHORT).show()
-                        btnTurnOn.text = "LAUNCHING IN 3..."
-                        object : CountDownTimer(3000, 1000) {
-                            override fun onTick(millisUntilFinished: Long) {
-                                btnTurnOn.text = "LAUNCHING IN ${(millisUntilFinished / 1000) + 1}..."
-                            }
-                            override fun onFinish() {
-                                launchGame()
-                                btnTurnOn.text = "TURN ON"
-                                updateUIState()
-                            }
-                        }.start()
+                        Toast.makeText(ctx, "Activation successful!", Toast.LENGTH_SHORT).show()
                         updateUIState()
                     } else {
                         Toast.makeText(ctx, "Error during activation. Check Shizuku status.", Toast.LENGTH_LONG).show()
@@ -302,20 +326,12 @@ class HomeFragment : Fragment() {
             return
         }
         val activity = requireActivity() as MainActivity
-        btnTurnOn.isEnabled = false
-        btnTurnOn.text = "LAUNCHING IN 3..."
+        btnTogglePower.isEnabled = false
         activity.executeTurnOnGlobal {
-            object : CountDownTimer(3000, 1000) {
-                override fun onTick(millisUntilFinished: Long) {
-                    btnTurnOn.text = "LAUNCHING IN ${(millisUntilFinished / 1000) + 1}..."
-                }
-                override fun onFinish() {
-                    launchGame()
-                    btnTurnOn.text = "TURN ON"
-                    btnTurnOn.isEnabled = true
-                    updateUIState()
-                }
-            }.start()
+            btnTogglePower.isEnabled = true
+            Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
+            updateUIState()
+            startTimerUpdate()
         }
     }
 
@@ -325,9 +341,9 @@ class HomeFragment : Fragment() {
             return
         }
         val activity = requireActivity() as MainActivity
-        btnTurnOff.isEnabled = false
+        btnTogglePower.isEnabled = false
         activity.executeTurnOffGlobal {
-            btnTurnOff.isEnabled = true
+            btnTogglePower.isEnabled = true
             Toast.makeText(context, "Mod turned off", Toast.LENGTH_SHORT).show()
             updateUIState()
             countDownTimer?.cancel()
@@ -335,39 +351,89 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun launchGame() {
-        var intent = requireActivity().packageManager.getLaunchIntentForPackage("com.dts.freefiremax")
-        if (intent != null) {
-            startActivity(intent)
-            return
+    private fun fetchSystemStats() {
+        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
+        
+        // Battery
+        try {
+            val bm = requireContext().getSystemService(android.content.Context.BATTERY_SERVICE) as android.os.BatteryManager
+            val batLevel = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            tvBattery.text = "Battery: $batLevel%"
+        } catch (e: Exception) {
+            tvBattery.text = "Battery: --%"
         }
-        intent = requireActivity().packageManager.getLaunchIntentForPackage("com.dts.freefireth")
-        if (intent != null) {
-            startActivity(intent)
-            return
-        }
-
-        // Try via Shizuku
+        
+        // Ping
         Thread {
-            var success = false
             try {
-                success = RenameUtil.executeShizukuCommand("monkey -p com.dts.freefiremax -c android.intent.category.LAUNCHER 1")
-                if (!success) {
-                    success = RenameUtil.executeShizukuCommand("monkey -p com.dts.freefireth -c android.intent.category.LAUNCHER 1")
+                val process = Runtime.getRuntime().exec("ping -c 1 8.8.8.8")
+                val returnVal = process.waitFor()
+                if (returnVal == 0) {
+                    val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+                    var time = "--"
+                    for (line in reader.lines()) {
+                        if (line.contains("time=")) {
+                            time = line.substringAfter("time=").substringBefore(" ")
+                            break
+                        }
+                    }
+                    requireActivity().runOnUiThread { tvPing.text = "Ping: ${time}ms" }
+                } else {
+                    requireActivity().runOnUiThread { tvPing.text = "Ping: Error" }
                 }
-                if (!success) {
-                    success = RenameUtil.executeShizukuCommand("am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n com.dts.freefiremax/com.dts.freefireth.FFMainActivity")
-                }
-                if (!success) {
-                    success = RenameUtil.executeShizukuCommand("am start -n com.dts.freefiremax/com.dts.freefireth.FFMainActivity")
-                }
-            } catch (e: Exception) { }
-
-            if (!success) {
-                requireActivity().runOnUiThread {
-                    Toast.makeText(context, "Could not open game! Please open it manually.", Toast.LENGTH_LONG).show()
-                }
+            } catch (e: Exception) {
+                requireActivity().runOnUiThread { tvPing.text = "Ping: Error" }
             }
         }.start()
+
+        // FPS
+        val windowManager = requireContext().getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        val display = windowManager.defaultDisplay
+        val refreshRate = display.refreshRate
+        tvFps.text = "FPS: ${refreshRate.toInt()}"
+
+        // Playtime
+        try {
+            val appOps = requireContext().getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val mode = appOps.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), requireContext().packageName)
+            if (mode == android.app.AppOpsManager.MODE_ALLOWED || mode == android.app.AppOpsManager.MODE_DEFAULT) {
+                val usageStatsManager = requireContext().getSystemService(android.content.Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+                val cal = java.util.Calendar.getInstance()
+                // today
+                cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                cal.set(java.util.Calendar.SECOND, 0)
+                val todayStart = cal.timeInMillis
+                val todayEnd = System.currentTimeMillis()
+                
+                val statsToday = usageStatsManager.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, todayStart, todayEnd)
+                val ffStatsToday = statsToday?.find { it.packageName == "com.dts.freefiremax" }
+                val timeToday = ffStatsToday?.totalTimeInForeground ?: 0L
+                val hoursToday = timeToday / 3600000
+                val minsToday = (timeToday % 3600000) / 60000
+                tvPlaytimeToday.text = "Today: ${hoursToday}h ${minsToday}m"
+
+                // yesterday
+                cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                val yesterdayStart = cal.timeInMillis
+                val yesterdayEnd = todayStart
+                
+                val statsYesterday = usageStatsManager.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, yesterdayStart, yesterdayEnd)
+                val ffStatsYesterday = statsYesterday?.find { it.packageName == "com.dts.freefiremax" }
+                val timeYesterday = ffStatsYesterday?.totalTimeInForeground ?: 0L
+                val hoursYest = timeYesterday / 3600000
+                val minsYest = (timeYesterday % 3600000) / 60000
+                tvPlaytimeYesterday.text = "Yesterday: ${hoursYest}h ${minsYest}m"
+
+            } else {
+                tvPlaytimeToday.text = "Tap to enable required permission"
+                tvPlaytimeToday.setOnClickListener {
+                    startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                }
+                tvPlaytimeYesterday.text = "Stats hidden"
+            }
+        } catch (e: Exception) {
+            tvPlaytimeToday.text = "Permission not available"
+        }
     }
 }

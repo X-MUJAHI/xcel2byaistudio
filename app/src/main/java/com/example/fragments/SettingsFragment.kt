@@ -156,6 +156,128 @@ class SettingsFragment : Fragment() {
                 .addToBackStack(null)
                 .commit()
         }
+
+        val tvResolution = view.findViewById<TextView>(R.id.tv_resolution)
+        val tvDpi = view.findViewById<TextView>(R.id.tv_dpi)
+        val btnEditDisplay = view.findViewById<ImageView>(R.id.btn_edit_display)
+
+        fun fetchDisplay() {
+            if (!RenameUtil.shizukuAvailable()) return
+            Thread {
+                var sizeOutput = "Unknown"
+                var densityOutput = "Unknown"
+                try {
+                    val p1 = Runtime.getRuntime().exec("sh /data/local/tmp/shizuku/sh -c 'wm size'")
+                    val reader1 = java.io.BufferedReader(java.io.InputStreamReader(p1.inputStream))
+                    val sizeLines = reader1.readText()
+                    // e.g. "Physical size: 1080x2400\nOverride size: 1080x2400"
+                    sizeOutput = sizeLines.replace("Physical size:", "").replace("Override size:", "").trim().split("\n").lastOrNull()?.trim() ?: "Unknown"
+
+                    val p2 = Runtime.getRuntime().exec("sh /data/local/tmp/shizuku/sh -c 'wm density'")
+                    val reader2 = java.io.BufferedReader(java.io.InputStreamReader(p2.inputStream))
+                    val denLines = reader2.readText()
+                    densityOutput = denLines.replace("Physical density:", "").replace("Override density:", "").trim().split("\n").lastOrNull()?.trim() ?: "Unknown"
+                } catch (e: Exception) {}
+
+                requireActivity().runOnUiThread {
+                    tvResolution.text = "Resolution: $sizeOutput"
+                    tvDpi.text = "DPI/Density: $densityOutput"
+                }
+            }.start()
+        }
+
+        fetchDisplay()
+
+        btnEditDisplay.setOnClickListener {
+            if (!RenameUtil.shizukuAvailable()) {
+                Toast.makeText(context, "Shizuku not authorized!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            val dialogView = layoutInflater.inflate(R.layout.dialog_display_config, null)
+            val etWidth = dialogView.findViewById<android.widget.EditText>(R.id.et_width)
+            val etHeight = dialogView.findViewById<android.widget.EditText>(R.id.et_height)
+            val etDensity = dialogView.findViewById<android.widget.EditText>(R.id.et_density)
+            val spinner = dialogView.findViewById<android.widget.Spinner>(R.id.spinner_templates)
+            val btnReset = dialogView.findViewById<Button>(R.id.btn_reset_default)
+
+            val templates = arrayOf(
+                "Custom",
+                "2.0k (3210x1440)",
+                "2.1k (3290x1476)",
+                "2.2k (3370x1512)",
+                "2.3k (3450x1548)",
+                "2.4k (3531x1584)",
+                "2.5k (3611x1620)",
+                "2.6k (3691x1656)",
+                "2.7k (3771x1692)",
+                "2.8k (3852x1728)",
+                "2.9k (3932x1764)",
+                "3.0k (4012x1800)",
+                "3.1k (4092x1836)",
+                "3.2k (4173x1872)",
+                "3.3k (4253x1908)",
+                "3.4k (4333x1944)",
+                "3.5k (4413x1980)",
+                "3.6k (4494x2016)",
+                "3.7k (4574x2052)",
+                "3.8k (4654x2088)",
+                "3.9k (4734x2124)"
+            )
+            
+            val adapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, templates)
+            spinner.adapter = adapter
+
+            spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    if (position > 0) {
+                        val selection = templates[position]
+                        val regex = Regex("\\((\\d+)x(\\d+)\\)")
+                        val match = regex.find(selection)
+                        if (match != null) {
+                            etWidth.setText(match.groupValues[2])  // Wait, standard Android size is shortxlong. E.g. 1080x2400. The templates provided are 3210x1440. So height x width?
+                            // Generally it's short x long in "wm size" for portrait. Assuming template format is heightxwidth: "3210x1440"
+                            etHeight.setText(match.groupValues[1])
+                            etWidth.setText(match.groupValues[2])
+                        }
+                    }
+                }
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            }
+
+            val builder = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                .setView(dialogView)
+                .setPositiveButton("APPLY") { _, _ ->
+                    val w = etWidth.text.toString()
+                    val h = etHeight.text.toString()
+                    var cmd = ""
+                    if (w.isNotEmpty() && h.isNotEmpty()) {
+                        cmd += "wm size ${w}x${h} && "
+                    }
+                    val d = etDensity.text.toString()
+                    if (d.isNotEmpty()) {
+                        cmd += "wm density $d"
+                    }
+                    if (cmd.endsWith(" && ")) {
+                        cmd = cmd.substring(0, cmd.length - 4)
+                    }
+                    
+                    if (cmd.isNotEmpty()) {
+                        RenameUtil.executeShizukuCommand(cmd)
+                        fetchDisplay()
+                    }
+                }
+                .setNegativeButton("CANCEL", null)
+
+            val dialog = builder.create()
+            dialog.show()
+
+            btnReset.setOnClickListener {
+                RenameUtil.executeShizukuCommand("wm size reset && wm density reset")
+                fetchDisplay()
+                dialog.dismiss()
+            }
+        }
         
         return view
     }

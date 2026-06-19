@@ -134,6 +134,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            val splash = findViewById<View>(R.id.splash_screen)
+            if (splash.visibility == View.VISIBLE) {
+                splash.animate().alpha(0f).setDuration(500).withEndAction {
+                    splash.visibility = View.GONE
+                }.start()
+            }
+        }, 2000)
+
         FirebaseFirestore.getInstance().collection("app_settings").document("global").get().addOnSuccessListener { doc ->
             if (doc.exists()) {
                 val timestampStr = doc.getString("app_expire_date") ?: "2099-01-01"
@@ -342,6 +351,19 @@ class MainActivity : AppCompatActivity() {
     private fun showKeyDialog(onSuccess: () -> Unit) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_key_input, null)
         val editText = dialogView.findViewById<android.widget.EditText>(R.id.et_key)
+
+        try {
+            val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            if (clipboard.hasPrimaryClip() && (clipboard.primaryClip?.itemCount ?: 0) > 0) {
+                val pasteText = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+                if (!pasteText.isNullOrEmpty()) {
+                    editText.setText(pasteText)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         val dialog = AlertDialog.Builder(this, androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
             .setView(dialogView)
             .setCancelable(false)

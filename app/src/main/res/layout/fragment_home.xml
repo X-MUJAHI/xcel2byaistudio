@@ -82,33 +82,101 @@
         android:layout_marginBottom="8dp"/>
 
     <Button
-        android:id="@+id/btn_turn_on"
+        android:id="@+id/btn_toggle_power"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="70dp"
         android:text="TURN ON"
         android:backgroundTint="#00E5FF"
         android:textColor="#151A22"
         android:textStyle="bold"
-        android:layout_marginBottom="8dp"
+        android:textSize="20sp"
+        android:layout_marginBottom="16dp"
+        android:elevation="8dp"
         android:visibility="gone"/>
 
     <Button
-        android:id="@+id/btn_turn_off"
+        android:id="@+id/btn_open_game"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        android:text="TURN OFF"
-        android:backgroundTint="#F44336"
-        android:textColor="#FFFFFF"
+        android:text="OPEN GAME"
+        android:backgroundTint="#FFB300"
+        android:textColor="#151A22"
         android:textStyle="bold"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone"/>
+        android:layout_marginBottom="16dp"/>
+    
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#1F2937"
+        android:padding="8dp"
+        android:layout_marginBottom="16dp"
+        android:weightSum="3">
+        <TextView
+            android:id="@+id/tv_ping"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Ping: --"
+            android:textColor="#00E5FF"
+            android:gravity="center"
+            android:textSize="12sp"/>
+        <TextView
+            android:id="@+id/tv_battery"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Battery: --"
+            android:textColor="#00E5FF"
+            android:gravity="center"
+            android:textSize="12sp"/>
+        <TextView
+            android:id="@+id/tv_fps"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="FPS: --"
+            android:textColor="#00E5FF"
+            android:gravity="center"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#1F2937"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DIGITAL WELLBEING"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+        <TextView
+            android:id="@+id/tv_playtime_today"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Today: --"
+            android:textColor="#00E5FF"
+            android:textSize="14sp"/>
+        <TextView
+            android:id="@+id/tv_playtime_yesterday"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Yesterday: --"
+            android:textColor="#9E9E9E"
+            android:textSize="14sp"/>
+    </LinearLayout>
 
     <Button
         android:id="@+id/btn_not_working"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="50dp"
         android:text="APP NOT WORKING?"
-        android:backgroundTint="#1F2937"
+        android:backgroundTint="#2D3748"
         android:textColor="#F44336"
         android:textStyle="bold"
         android:layout_marginBottom="8dp"/>
