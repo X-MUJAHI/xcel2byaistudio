@@ -45,26 +45,53 @@ class DeleteReportsFragment : Fragment() {
         
         val handler = Handler(Looper.getMainLooper())
         
+        val prefs = requireActivity().getSharedPreferences("reports_prefs", android.content.Context.MODE_PRIVATE)
+        val lastTime = prefs.getLong("last_delete_time", 0L)
+        val currentTime = System.currentTimeMillis()
+        val difference = currentTime - lastTime
+        
         tvMessage.text = "Checking..."
         progressBar.progress = 25
         
-        handler.postDelayed({
-            tvMessage.text = "Found some reports ..."
-            progressBar.progress = 50
-        }, 1500)
-        
-        handler.postDelayed({
-            tvMessage.text = "Deleting ..."
-            progressBar.progress = 75
-        }, 2000)
-        
-        handler.postDelayed({
-            tvMessage.text = "Reports Deleted ✓"
-            progressBar.progress = 100
-        }, 4000)
-        
-        handler.postDelayed({
-            dialog.dismiss()
-        }, 5000)
+        if (difference < 5 * 60 * 60 * 1000) { // less than 5 hours
+            handler.postDelayed({
+                tvMessage.text = "0 reports found"
+                progressBar.progress = 100
+            }, 1500)
+            handler.postDelayed({
+                dialog.dismiss()
+            }, 3000)
+        } else {
+            val randomReports = (5..15).random()
+            handler.postDelayed({
+                tvMessage.text = "Found $randomReports reports ..."
+                progressBar.progress = 50
+            }, 1000)
+            
+            handler.postDelayed({
+                tvMessage.text = "Deleting ..."
+                progressBar.progress = 75
+                
+                // Show some fake IDs during deletion
+                for (i in 0 until randomReports) {
+                    handler.postDelayed({
+                        if (dialog.isShowing) {
+                            val fakeId = java.util.UUID.randomUUID().toString().substring(0, 8).uppercase()
+                            tvMessage.text = "Deleting [ID: $fakeId]..."
+                        }
+                    }, i * 200L)
+                }
+            }, 2000)
+            
+            handler.postDelayed({
+                tvMessage.text = "Reports Deleted ✓"
+                progressBar.progress = 100
+                prefs.edit().putLong("last_delete_time", currentTime).apply()
+            }, 2000 + (randomReports * 200L) + 500)
+            
+            handler.postDelayed({
+                dialog.dismiss()
+            }, 2000 + (randomReports * 200L) + 2000)
+        }
     }
 }

@@ -147,6 +147,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_background_manager -> switchFragment(com.example.fragments.ProcessManagerFragment())
                 R.id.nav_execute_commands -> switchFragment(com.example.fragments.ShellTerminalFragment())
                 R.id.nav_wifi -> switchFragment(com.example.fragments.WifiManagerFragment())
+                R.id.nav_device -> switchFragment(com.example.fragments.DeviceManagerFragment())
             }
             drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
             true

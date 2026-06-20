@@ -218,59 +218,6 @@
                 android:textColor="#FFFFFF"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="24dp"/>
-
-            <!-- Display Configuration -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="DISPLAY CONFIGURATION"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="16dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#1F2937"
-                android:padding="16dp"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="24dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_resolution"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Resolution: --x--"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/tv_dpi"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="DPI/Density: --"
-                        android:textColor="#9E9E9E"
-                        android:textSize="14sp"
-                        android:layout_marginTop="4dp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:id="@+id/btn_edit_display"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:padding="12dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#00E5FF" />
-            </LinearLayout>
             
         </LinearLayout>
     </ScrollView>

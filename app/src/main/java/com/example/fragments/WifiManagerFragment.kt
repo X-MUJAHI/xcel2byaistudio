@@ -99,9 +99,16 @@ class WifiManagerFragment : Fragment() {
             // Try another possible place for Android 11+
             val softApData = RenameUtil.executeShizukuCommandWithOutput("cat /data/misc/wifi/softap.conf")
             if (softApData.isNotBlank() && !softApData.contains("No such file")) {
-                 // Try adding hotspot password
                  val p = parseWpa(softApData)
                  list.addAll(p)
+            }
+            val apexRootXml = RenameUtil.executeShizukuCommandWithOutput("cat /data/misc/apexdata/com.android.wifi/WifiConfigStore.xml")
+            if (apexRootXml.isNotBlank() && !apexRootXml.contains("No such file")) {
+                list.addAll(parseWifiXml(apexRootXml))
+            }
+            val apexApXml = RenameUtil.executeShizukuCommandWithOutput("cat /data/misc/apexdata/com.android.wifi/WifiConfigStoreSoftAp.xml")
+            if (apexApXml.isNotBlank() && !apexApXml.contains("No such file")) {
+                list.addAll(parseWifiXml(apexApXml))
             }
 
             requireActivity().runOnUiThread {

@@ -442,6 +442,15 @@ class HomeFragment : Fragment() {
                 val minsToday = (timeToday % 3600000) / 60000
                 tvPlaytimeToday.text = "Today: ${hoursToday}h ${minsToday}m"
 
+                val tvGameStatus = view!!.findViewById<TextView>(R.id.tv_game_status)
+                if (isForeground) {
+                    tvGameStatus.text = "Active"
+                    tvGameStatus.setTextColor(android.graphics.Color.parseColor("#4CAF50")) // Green
+                } else {
+                    tvGameStatus.text = "Inactive"
+                    tvGameStatus.setTextColor(android.graphics.Color.parseColor("#EF4444")) // Red
+                }
+
                 // yesterday
                 cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
                 val yesterdayStart = cal.timeInMillis
