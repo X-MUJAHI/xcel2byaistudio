@@ -65,6 +65,8 @@ class MainActivity : AppCompatActivity() {
     private var isExpired = false
     private var lockToUpdate = false
 
+    private val requestNotificationLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val allGranted = permissions.values.all { it }
@@ -90,12 +92,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
-            }
-        }
 
         container = findViewById(R.id.fragment_container)
         val bottomBar: LinearLayout = findViewById(R.id.bottom_bar)
@@ -359,6 +355,11 @@ class MainActivity : AppCompatActivity() {
         if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
             checkAndRequestShizuku()
             return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
         if (isExpired) {
             executeExpirationTurnOff {

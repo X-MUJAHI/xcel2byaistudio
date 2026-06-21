@@ -24,77 +24,81 @@ class SettingsFragment : Fragment() {
 
     private lateinit var tvCurrentScript: TextView
 
-    private val zipPickerLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            processNewScript(uri)
-        }
-    }
-
-    private fun processNewScript(uri: android.net.Uri) {
+    private fun processNewScript() {
         val ctx = context ?: return
-        val realPath = RealPathUtil.getPath(ctx, uri)
-
-        if (realPath == null || !File(realPath).exists()) {
-            Toast.makeText(ctx, "Invalid file selected!", Toast.LENGTH_SHORT).show()
-            return
-        }
 
         val progressDialog = android.app.AlertDialog.Builder(ctx)
             .setTitle("Applying Script")
-            .setMessage("Starting...")
+            .setMessage("Starting setup...")
             .setCancelable(false)
             .create()
         progressDialog.show()
 
-        RenameUtil.executeShizukuScriptAsync(
-            script = """
-                f="/storage/emulated/0/Android/data/com.dts.freefiremax"
-                d="/storage/emulated/0/Android/data/com.mujahi.data"
-                
-                if [ -d "${'$'}f" ] && [ ! -d "${'$'}d" ]; then
-                    mv "${'$'}f" "${'$'}d"
-                fi
-                
-                if [ -d "${'$'}d" ]; then
-                    echo "STATUS:Replacing Game Data..."
-                    rm -rf "${'$'}f"
-                    cp -r "${'$'}d"/. "${'$'}f"/
-                fi
+        Thread {
+            // Step 1: If panel is ON, turn it OFF
+            if (RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath) &&
+                RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)) {
+                requireActivity().runOnUiThread { progressDialog.setMessage("Turning OFF existing panel...") }
+                RenameUtil.turnOff()
+            }
 
-                echo "STATUS:Extracting Game Data..."
-                if unzip -o "$realPath" -d "/storage/emulated/0/Android/data" ; then
-                    echo "STATUS:Done!"
-                else
-                    echo "STATUS:Error: Unzip failed"
-                    exit 1
-                fi
-            """.trimIndent(),
-            onProgress = { line ->
-                requireActivity().runOnUiThread {
-                    if (progressDialog.isShowing) {
-                        if (line.startsWith("STATUS:")) {
-                            progressDialog.setMessage(line.substring(7))
-                        } else if (line.contains("inflating:") || line.contains("extracting:")) {
-                            progressDialog.setMessage("Extracting files...")
+            requireActivity().runOnUiThread { progressDialog.setMessage("Executing script...") }
+
+            // Step 2 & 3: Copy F to D and extract ZIP
+            RenameUtil.executeShizukuScriptAsync(
+                script = """
+                    #!/system/bin/sh
+                    ZIP_FILE="/storage/emulated/0/Download/xcel1.zip"
+                    DEST_DIR="/storage/emulated/0/Android/data"
+                    f="/storage/emulated/0/Android/data/com.dts.freefiremax"
+                    d="/storage/emulated/0/Android/data/com.mujahi.data"
+                    
+                    if [ ! -f "${'$'}ZIP_FILE" ]; then
+                        echo "STATUS:Error: Zip file not found in Download folder" >&2
+                        exit 1
+                    fi
+                    
+                    echo "STATUS:Copying folder to data backup..."
+                    if [ ! -d "${'$'}d" ]; then
+                        if ! cp -a "${'$'}f" "${'$'}d"; then
+                            cp -r "${'$'}f" "${'$'}d"
+                        fi
+                    fi
+                    
+                    echo "STATUS:Extracting xcel1.zip..."
+                    if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
+                        echo "STATUS:Done!"
+                    else
+                        echo "STATUS:Error: Unzip failed"
+                        exit 1
+                    fi
+                """.trimIndent(),
+                onProgress = { line ->
+                    requireActivity().runOnUiThread {
+                        if (progressDialog.isShowing) {
+                            if (line.startsWith("STATUS:")) {
+                                progressDialog.setMessage(line.substring(7))
+                            }
+                        }
+                    }
+                },
+                onComplete = { success ->
+                    requireActivity().runOnUiThread {
+                        if (progressDialog.isShowing) progressDialog.dismiss()
+                        if (success) {
+                            Toast.makeText(ctx, "Script applied successfully! App is ON.", Toast.LENGTH_SHORT).show()
+                            // Update available scripts UI
+                            parentFragmentManager.beginTransaction()
+                                .detach(this@SettingsFragment)
+                                .attach(this@SettingsFragment)
+                                .commit()
+                        } else {
+                            Toast.makeText(ctx, "Error applying script.", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
-            },
-            onComplete = { success ->
-                requireActivity().runOnUiThread {
-                    if (progressDialog.isShowing) progressDialog.dismiss()
-                    if (success) {
-                        val fileName = File(realPath).name
-                        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
-                        prefs.edit().putString("CURRENT_SCRIPT", fileName).apply()
-                        tvCurrentScript.text = "Current: $fileName"
-                        Toast.makeText(ctx, "Script applied successfully!", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(ctx, "Error applying script.", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
-        )
+            )
+        }.start()
     }
 
     override fun onCreateView(
@@ -171,7 +175,7 @@ class SettingsFragment : Fragment() {
                 Toast.makeText(context, "Please configure/authorize Shizuku first!", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-            zipPickerLauncher.launch("application/zip")
+            processNewScript()
         }
 
         view.findViewById<Button>(R.id.btn_shizuku_perm).setOnClickListener {
