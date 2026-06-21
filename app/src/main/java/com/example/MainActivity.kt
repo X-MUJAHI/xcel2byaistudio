@@ -74,7 +74,13 @@ class MainActivity : AppCompatActivity() {
                 permissionReady = true
                 checkAndRequestShizuku()
             } else {
-                requestStoragePermission()
+                AlertDialog.Builder(this)
+                    .setTitle("Storage Permission Required")
+                    .setMessage("Please grant storage permissions to use the app.")
+                    .setPositiveButton("Retry") { _, _ -> requestStoragePermission() }
+                    .setNegativeButton("Exit") { _, _ -> finish() }
+                    .setCancelable(false)
+                    .show()
             }
         }
 
@@ -358,7 +364,10 @@ class MainActivity : AppCompatActivity() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if (!prefs.getBoolean("has_requested_notif", false)) {
+                    prefs.edit().putBoolean("has_requested_notif", true).apply()
+                    requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
         }
         if (isExpired) {
@@ -484,7 +493,10 @@ class MainActivity : AppCompatActivity() {
         ivSettings.visibility = View.VISIBLE
         val ivMenu: ImageView = findViewById(R.id.iv_menu)
         ivMenu.visibility = View.VISIBLE
-        switchFragment(HomeFragment())
+        val currentFrag = supportFragmentManager.findFragmentById(R.id.fragment_container)
+        if (currentFrag == null || currentFrag is UpdateFragment) {
+            switchFragment(HomeFragment())
+        }
         checkMissedAutoOff()
         
         Thread {
