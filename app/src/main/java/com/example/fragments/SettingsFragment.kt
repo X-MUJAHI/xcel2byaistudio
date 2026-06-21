@@ -111,8 +111,47 @@ class SettingsFragment : Fragment() {
         view.findViewById<ImageView>(R.id.btn_back).visibility = View.VISIBLE
 
         tvCurrentScript = view.findViewById(R.id.tv_current_script)
-        val currentScript = prefs.getString("CURRENT_SCRIPT", "xcel1.zip (Default)")
-        tvCurrentScript.text = "Current: $currentScript"
+        val tvAvailableScripts = view.findViewById<TextView>(R.id.tv_available_scripts)
+
+        Thread {
+            val f = MainActivity.APP_FOLDER.absolutePath
+            var current = "None"
+            if (RenameUtil.checkDirExists(f)) {
+                val scriptTxt = RenameUtil.executeShizukuCommandWithOutput("cat \"$f/script.txt\"").trim()
+                if (scriptTxt.isNotEmpty() && !scriptTxt.contains("No such file")) {
+                    current = scriptTxt
+                } else if (RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)) {
+                    current = "Unknown (ON)"
+                }
+            }
+            
+            val lsOutput = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.*").trim()
+            val available = mutableListOf<String>()
+            if (lsOutput.isNotEmpty() && !lsOutput.contains("No such file")) {
+                val lines = lsOutput.split("\n")
+                for (line in lines) {
+                    if (line.isNotBlank()) {
+                        val path = line.trim()
+                        val scriptTxt = RenameUtil.executeShizukuCommandWithOutput("cat \"$path/script.txt\"").trim()
+                        if (scriptTxt.isNotEmpty() && !scriptTxt.contains("No such file")) {
+                            available.add(scriptTxt)
+                        } else {
+                            val suffix = path.substringAfterLast("com.mujahi.script.")
+                            available.add(suffix)
+                        }
+                    }
+                }
+            }
+
+            requireActivity().runOnUiThread {
+                tvCurrentScript.text = "Current: $current"
+                if (available.isEmpty()) {
+                    tvAvailableScripts.text = "Available Scripts:\nNone"
+                } else {
+                    tvAvailableScripts.text = "Available Scripts:\n- " + available.joinToString("\n- ")
+                }
+            }
+        }.start()
 
         val switchHologram = view.findViewById<Switch>(R.id.switch_hologram)
         val switchAntiBan = view.findViewById<Switch>(R.id.switch_anti_ban)

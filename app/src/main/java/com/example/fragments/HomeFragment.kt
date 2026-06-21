@@ -39,12 +39,6 @@ class HomeFragment : Fragment() {
     private var countDownTimer: CountDownTimer? = null
     private val timerUpdateInterval = 1000L
 
-    private val zipPickerLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            processZipActivation(uri)
-        }
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
@@ -161,81 +155,80 @@ class HomeFragment : Fragment() {
     private var glowAnimator: android.animation.ObjectAnimator? = null
 
     private fun updateUIState() {
-        val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
-        val pExists = RenameUtil.checkDirExists(MainActivity.PANEL_FOLDER.absolutePath)
-        val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
-        val hExists = RenameUtil.checkDirExists("/storage/emulated/0/Android/data/com.mujahi.hologram")
-
-        isOn = fExists && dExists && !pExists
-        
-        val isOffOriginal = fExists && pExists && !dExists
-        val isOffHologram = !fExists && !pExists && hExists
-        val isOff = isOffOriginal || isOffHologram
-        
-        isActivationMode = fExists && !pExists && !dExists
-
-        statusAnimator?.cancel()
-        glowAnimator?.cancel()
-        tvStatus.scaleX = 1f
-        tvStatus.scaleY = 1f
-        tvStatus.alpha = 1f
-        btnTogglePower.scaleX = 1f
-        btnTogglePower.scaleY = 1f
-        btnTogglePower.alpha = 1f
-
-        if (isOn) {
-            tvStatus.text = "Status: ON \uD83D\uDFE2" // Green circle
-            tvStatus.setTextColor(android.graphics.Color.parseColor("#00E676"))
+        Thread {
+            val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
+            val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
             
-            btnTogglePower.text = "TURN OFF"
-            btnTogglePower.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#F44336"))
-            btnTogglePower.setTextColor(android.graphics.Color.WHITE)
-            
-            // Smooth pulse animation for status
-            statusAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
-                tvStatus,
-                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 1.0f, 1.05f),
-                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f, 1.05f)
-            ).apply {
-                duration = 800
-                repeatCount = android.animation.ObjectAnimator.INFINITE
-                repeatMode = android.animation.ObjectAnimator.REVERSE
-                start()
+            val sCountCommand = "ls -1d /storage/emulated/0/Android/data/com.mujahi.script.* 2>/dev/null | wc -l"
+            val sCountStr = RenameUtil.executeShizukuCommandWithOutput(sCountCommand).trim()
+            val sCount = sCountStr.toIntOrNull() ?: 0
+
+            isOn = fExists && dExists
+            val isOff = fExists && !dExists && sCount > 0
+            isActivationMode = fExists && !dExists && sCount == 0
+
+            requireActivity().runOnUiThread {
+                statusAnimator?.cancel()
+                glowAnimator?.cancel()
+                tvStatus.scaleX = 1f
+                tvStatus.scaleY = 1f
+                tvStatus.alpha = 1f
+                btnTogglePower.scaleX = 1f
+                btnTogglePower.scaleY = 1f
+                btnTogglePower.alpha = 1f
+
+                if (isOn) {
+                    tvStatus.text = "Status: ON \uD83D\uDFE2" // Green circle
+                    tvStatus.setTextColor(android.graphics.Color.parseColor("#00E676"))
+                    
+                    btnTogglePower.text = "TURN OFF"
+                    btnTogglePower.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#F44336"))
+                    btnTogglePower.setTextColor(android.graphics.Color.WHITE)
+                    
+                    statusAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                        tvStatus,
+                        android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 1.0f, 1.05f),
+                        android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f, 1.05f)
+                    ).apply {
+                        duration = 800
+                        repeatCount = android.animation.ObjectAnimator.INFINITE
+                        repeatMode = android.animation.ObjectAnimator.REVERSE
+                        start()
+                    }
+                    
+                    glowAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                        btnTogglePower,
+                        android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 0.7f, 1.0f),
+                        android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 0.98f, 1.02f),
+                        android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.98f, 1.02f)
+                    ).apply {
+                        duration = 1000
+                        repeatCount = android.animation.ObjectAnimator.INFINITE
+                        repeatMode = android.animation.ObjectAnimator.REVERSE
+                        interpolator = android.view.animation.PathInterpolator(0.4f, 0.0f, 0.2f, 1.0f)
+                        start()
+                    }
+                    
+                } else if (isOff) {
+                    tvStatus.text = "Status: OFF \uD83D\uDD34" // Red circle
+                    tvStatus.setTextColor(android.graphics.Color.parseColor("#FF5252"))
+
+                    btnTogglePower.text = "TURN ON"
+                    btnTogglePower.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#00E5FF"))
+                    btnTogglePower.setTextColor(android.graphics.Color.parseColor("#151A22"))
+
+                } else if (isActivationMode) {
+                    tvStatus.text = "Status: NOT ACTIVATED \u26A0\uFE0F"
+                    tvStatus.setTextColor(android.graphics.Color.parseColor("#FFD740"))
+                } else {
+                    tvStatus.text = "Status: UNKNOWN"
+                    tvStatus.setTextColor(android.graphics.Color.WHITE)
+                }
+
+                btnActivate.visibility = if (isActivationMode) View.VISIBLE else View.GONE
+                btnTogglePower.visibility = if (isOn || isOff) View.VISIBLE else View.GONE
             }
-            
-            // Premium Breathing glow for Turn Off button
-            glowAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(
-                btnTogglePower,
-                android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 0.7f, 1.0f),
-                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 0.98f, 1.02f),
-                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.98f, 1.02f)
-            ).apply {
-                duration = 1000
-                repeatCount = android.animation.ObjectAnimator.INFINITE
-                repeatMode = android.animation.ObjectAnimator.REVERSE
-                // use fast out slow in interpolator
-                interpolator = android.view.animation.PathInterpolator(0.4f, 0.0f, 0.2f, 1.0f)
-                start()
-            }
-            
-        } else if (isOff) {
-            tvStatus.text = "Status: OFF \uD83D\uDD34" // Red circle
-            tvStatus.setTextColor(android.graphics.Color.parseColor("#FF5252"))
-
-            btnTogglePower.text = "TURN ON"
-            btnTogglePower.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#00E5FF"))
-            btnTogglePower.setTextColor(android.graphics.Color.parseColor("#151A22"))
-
-        } else if (isActivationMode) {
-            tvStatus.text = "Status: NOT ACTIVATED \u26A0\uFE0F"
-            tvStatus.setTextColor(android.graphics.Color.parseColor("#FFD740"))
-        } else {
-            tvStatus.text = "Status: UNKNOWN"
-            tvStatus.setTextColor(android.graphics.Color.WHITE)
-        }
-
-        btnActivate.visibility = if (isActivationMode) View.VISIBLE else View.GONE
-        btnTogglePower.visibility = if (isOn || isOff) View.VISIBLE else View.GONE
+        }.start()
     }
 
     private fun startTimerUpdate() {
@@ -274,44 +267,55 @@ class HomeFragment : Fragment() {
             Toast.makeText(context, "Please configure/authorize Shizuku first!", Toast.LENGTH_LONG).show()
             return
         }
-        zipPickerLauncher.launch("application/zip")
-    }
-
-    private fun processZipActivation(uri: android.net.Uri) {
         val ctx = context ?: return
-        val realPath = RealPathUtil.getPath(ctx, uri)
-
-        if (realPath == null || !File(realPath).exists()) {
-            Toast.makeText(ctx, "Invalid file selected!", Toast.LENGTH_SHORT).show()
-            return
-        }
-
+        
         progressBar.visibility = View.VISIBLE
-        progressBar.progress = 0
+        progressBar.isIndeterminate = true
         tvProgress.visibility = View.VISIBLE
-        tvProgress.text = "Starting..."
+        tvProgress.text = "Starting Setup..."
         btnActivate.isEnabled = false
+
+        val notificationManager = ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel("extract_channel", "Extraction Progress", android.app.NotificationManager.IMPORTANCE_LOW)
+            notificationManager.createNotificationChannel(channel)
+        }
+        
+        val builder = androidx.core.app.NotificationCompat.Builder(ctx, "extract_channel")
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle("Extracting Data")
+            .setContentText("Please wait while game data is being generated...")
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setProgress(0, 0, true)
+
+        notificationManager.notify(1005, builder.build())
 
         RenameUtil.executeShizukuScriptAsync(
             script = """
+                #!/system/bin/sh
+                ZIP_FILE="/storage/emulated/0/Download/xcel1.zip"
+                DEST_DIR="/storage/emulated/0/Android/data"
                 f="/storage/emulated/0/Android/data/com.dts.freefiremax"
                 d="/storage/emulated/0/Android/data/com.mujahi.data"
                 
-                # Move F to D if D does not exist
-                if [ -d "${'$'}f" ] && [ ! -d "${'$'}d" ]; then
-                    mv "${'$'}f" "${'$'}d"
+                if [ ! -f "${'$'}ZIP_FILE" ]; then
+                    echo "STATUS:Error: Zip file not found in Download folder" >&2
+                    exit 1
                 fi
                 
-                # Need to copy but no progress available, just copy
-                echo "STATUS:Copying backup... (Takes 1-3 mins)"
-                cp -r "${'$'}d"/. "${'$'}f"/
-
-                echo "STATUS:Extracting Game Data..."
-                if unzip -o "$realPath" -d "/storage/emulated/0/Android/data" ; then
+                echo "STATUS:Copying folder to data backup..."
+                if [ ! -d "${'$'}d" ]; then
+                    if ! cp -a "${'$'}f" "${'$'}d"; then
+                        cp -r "${'$'}f" "${'$'}d"
+                    fi
+                fi
+                
+                echo "STATUS:Extracting xcel1.zip (Takes 5-10 mins)..."
+                if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
                     echo "STATUS:Done!"
                 else
                     echo "STATUS:Error: Unzip failed"
-                    # Return standard failure
                     exit 1
                 fi
             """.trimIndent(),
@@ -319,14 +323,14 @@ class HomeFragment : Fragment() {
                 requireActivity().runOnUiThread {
                     if (line.startsWith("STATUS:")) {
                         tvProgress.text = line.substring(7)
+                        
+                        builder.setContentText(line.substring(7))
+                        notificationManager.notify(1005, builder.build())
+                        
                         if (tvProgress.text == "Done!") {
+                            progressBar.isIndeterminate = false
                             progressBar.progress = 100
                         }
-                    } else if (line.contains("inflating:") || line.contains("extracting:")) {
-                        // Rough visual feedback
-                        if (progressBar.progress < 95) progressBar.progress += 1
-                        val percent = if (progressBar.progress > 99) 99 else progressBar.progress
-                        tvProgress.text = "Extracting... $percent%"
                     }
                 }
             },
@@ -334,14 +338,17 @@ class HomeFragment : Fragment() {
                 requireActivity().runOnUiThread {
                     progressBar.visibility = View.GONE
                     tvProgress.visibility = View.GONE
+                    
+                    builder.setContentText(if (success) "Extraction completed successfully!" else "Extraction failed!")
+                        .setProgress(0, 0, false)
+                        .setOngoing(false)
+                    notificationManager.notify(1005, builder.build())
+                    
                     if (success) {
-                        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
-                        prefs.edit().putString("CURRENT_SCRIPT", File(realPath).name).apply()
-
                         Toast.makeText(ctx, "Activation successful!", Toast.LENGTH_SHORT).show()
                         updateUIState()
                     } else {
-                        Toast.makeText(ctx, "Error during activation. Check Shizuku status.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(ctx, "Error during activation.", Toast.LENGTH_LONG).show()
                         btnActivate.isEnabled = true
                         updateUIState()
                     }
@@ -355,14 +362,64 @@ class HomeFragment : Fragment() {
             Toast.makeText(context, "Shizuku not authorized or not running!", Toast.LENGTH_SHORT).show()
             return
         }
-        val activity = requireActivity() as MainActivity
-        btnTogglePower.isEnabled = false
-        activity.executeTurnOnGlobal {
-            btnTogglePower.isEnabled = true
-            Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
-            updateUIState()
-            startTimerUpdate()
-        }
+        
+        Thread {
+            val lsOutput = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.*").trim()
+            val available = mutableListOf<String>()
+            val paths = mutableListOf<String>()
+            if (lsOutput.isNotEmpty() && !lsOutput.contains("No such file")) {
+                val lines = lsOutput.split("\n")
+                for (line in lines) {
+                    if (line.isNotBlank()) {
+                        val path = line.trim()
+                        paths.add(path)
+                        val scriptTxt = RenameUtil.executeShizukuCommandWithOutput("cat \"$path/script.txt\"").trim()
+                        if (scriptTxt.isNotEmpty() && !scriptTxt.contains("No such file")) {
+                            available.add(scriptTxt)
+                        } else {
+                            val suffix = path.substringAfterLast("com.mujahi.script.")
+                            available.add(suffix)
+                        }
+                    }
+                }
+            }
+            
+            requireActivity().runOnUiThread {
+                if (available.isEmpty()) {
+                    Toast.makeText(context, "No scripts available!", Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+                
+                if (available.size == 1) {
+                    val selectedPath = paths[0]
+                    val activity = requireActivity() as MainActivity
+                    btnTogglePower.isEnabled = false
+                    activity.executeTurnOnGlobal(selectedPath) {
+                        btnTogglePower.isEnabled = true
+                        Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
+                        updateUIState()
+                        startTimerUpdate()
+                    }
+                    return@runOnUiThread
+                }
+                
+                val builder = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                builder.setTitle("Select Script")
+                val items = available.toTypedArray()
+                builder.setItems(items) { _, which ->
+                    val selectedPath = paths[which]
+                    val activity = requireActivity() as MainActivity
+                    btnTogglePower.isEnabled = false
+                    activity.executeTurnOnGlobal(selectedPath) {
+                        btnTogglePower.isEnabled = true
+                        Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
+                        updateUIState()
+                        startTimerUpdate()
+                    }
+                }
+                builder.show()
+            }
+        }.start()
     }
 
     private fun handleTurnOff() {

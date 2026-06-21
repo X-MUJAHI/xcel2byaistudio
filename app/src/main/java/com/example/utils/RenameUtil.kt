@@ -155,23 +155,13 @@ object RenameUtil {
         }
     }
 
-    fun turnOn(): Boolean {
+    fun turnOn(scriptPath: String): Boolean {
         val f = MainActivity.APP_FOLDER.absolutePath
-        val p = MainActivity.PANEL_FOLDER.absolutePath
         val d = MainActivity.DATA_FOLDER.absolutePath
-        val h = "/storage/emulated/0/Android/data/com.mujahi.hologram"
         
-        if (checkDirExists(f) && checkDirExists(p) && !checkDirExists(d)) {
-            val cmd = "mv \"$f\" \"$d\" && mv \"$p\" \"$f\""
+        if (checkDirExists(f) && checkDirExists(scriptPath) && !checkDirExists(d)) {
+            val cmd = "mv \"$f\" \"$d\" && mv \"$scriptPath\" \"$f\""
             return executeShizukuCommand(cmd)
-        } else if (!checkDirExists(f) && !checkDirExists(p) && checkDirExists(h)) {
-            if (!checkDirExists(d)) {
-                val cmd = "mv \"$h\" \"$f\" && mkdir -p \"$d\" && echo \"xcelestials by mujahi\" > \"$d/index.py\""
-                return executeShizukuCommand(cmd)
-            } else {
-                val cmd = "mv \"$h\" \"$f\""
-                return executeShizukuCommand(cmd)
-            }
         }
         return false
     }
@@ -179,10 +169,17 @@ object RenameUtil {
     fun turnOff(): Boolean {
         val f = MainActivity.APP_FOLDER.absolutePath
         val d = MainActivity.DATA_FOLDER.absolutePath
-        val p = MainActivity.PANEL_FOLDER.absolutePath
         
-        if (checkDirExists(f) && checkDirExists(d) && !checkDirExists(p)) {
-            val cmd = "mv \"$f\" \"$p\" && mv \"$d\" \"$f\""
+        if (checkDirExists(f) && checkDirExists(d)) {
+            val scriptTxtData = executeShizukuCommandWithOutput("cat \"$f/script.txt\"").trim()
+            val suffix = if (scriptTxtData.isNotEmpty() && !scriptTxtData.contains("No such file")) {
+                scriptTxtData
+            } else {
+                "default"
+            }
+            val s = "/storage/emulated/0/Android/data/com.mujahi.script.$suffix"
+            
+            val cmd = "mv \"$f\" \"$s\" && mv \"$d\" \"$f\""
             return executeShizukuCommand(cmd)
         }
         return false

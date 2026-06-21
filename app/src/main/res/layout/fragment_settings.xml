@@ -53,9 +53,18 @@
                 android:id="@+id/tv_current_script"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Current: xcel1.zip (Default)"
+                android:text="Current: None"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tv_available_scripts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Available Scripts:\nNone"
+                android:textColor="#AAAAAA"
+                android:textSize="14sp"
                 android:layout_marginBottom="12dp" />
 
             <Button

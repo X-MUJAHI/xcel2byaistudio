@@ -91,6 +91,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
+
         container = findViewById(R.id.fragment_container)
         val bottomBar: LinearLayout = findViewById(R.id.bottom_bar)
         btnHome = findViewById(R.id.btn_home)
@@ -534,8 +540,7 @@ class MainActivity : AppCompatActivity() {
     private fun executeExpirationTurnOff(onComplete: () -> Unit) {
         Thread {
             if (RenameUtil.checkDirExists(APP_FOLDER.absolutePath) &&
-                RenameUtil.checkDirExists(DATA_FOLDER.absolutePath) &&
-                !RenameUtil.checkDirExists(PANEL_FOLDER.absolutePath)) {
+                RenameUtil.checkDirExists(DATA_FOLDER.absolutePath)) {
                 RenameUtil.turnOff()
             }
             runOnUiThread {
@@ -586,9 +591,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.bottom_bar).visibility = View.VISIBLE
     }
 
-    fun executeTurnOnGlobal(onComplete: (() -> Unit)? = null) {
+    fun executeTurnOnGlobal(scriptPath: String, onComplete: (() -> Unit)? = null) {
         Thread {
-            RenameUtil.turnOn()
+            RenameUtil.turnOn(scriptPath)
             runOnUiThread {
                 if (prefs.getString(KEY_USER_TYPE, null) == "NORMAL") {
                     scheduleAutoOffAlarm()
@@ -618,8 +623,7 @@ class MainActivity : AppCompatActivity() {
     fun forceTurnOffIfNeeded(callback: () -> Unit) {
         Thread {
             if (RenameUtil.checkDirExists(APP_FOLDER.absolutePath) &&
-                RenameUtil.checkDirExists(DATA_FOLDER.absolutePath) &&
-                !RenameUtil.checkDirExists(PANEL_FOLDER.absolutePath)) {
+                RenameUtil.checkDirExists(DATA_FOLDER.absolutePath)) {
                 RenameUtil.turnOff()
                 runOnUiThread {
                     AlarmReceiver.cancelAlarm(this)
