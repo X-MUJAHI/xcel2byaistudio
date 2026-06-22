@@ -429,12 +429,30 @@ class HomeFragment : Fragment() {
         }
         val activity = requireActivity() as MainActivity
         btnTogglePower.isEnabled = false
-        activity.executeTurnOffGlobal {
-            btnTogglePower.isEnabled = true
-            Toast.makeText(context, "Mod turned off", Toast.LENGTH_SHORT).show()
-            updateUIState()
-            countDownTimer?.cancel()
-            tvTimer.text = "Timer: --"
+        activity.executeTurnOffGlobal { result ->
+            if (result == "MISSING_SCRIPT_TXT") {
+                Thread {
+                    val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
+                    val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
+                    val sCountStr = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.* 2>/dev/null | wc -l").trim()
+                    
+                    val msg = "Error: script.txt not found!\n\$F exists: $fExists\n\$D exists: $dExists\n\$S count: $sCountStr"
+                    requireActivity().runOnUiThread {
+                        android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                            .setTitle("System Error")
+                            .setMessage(msg)
+                            .setPositiveButton("OK", null)
+                            .show()
+                        btnTogglePower.isEnabled = true
+                    }
+                }.start()
+            } else {
+                btnTogglePower.isEnabled = true
+                Toast.makeText(context, "Mod turned off", Toast.LENGTH_SHORT).show()
+                updateUIState()
+                countDownTimer?.cancel()
+                tvTimer.text = "Timer: --"
+            }
         }
     }
 

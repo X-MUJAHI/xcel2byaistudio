@@ -166,23 +166,23 @@ object RenameUtil {
         return false
     }
 
-    fun turnOff(): Boolean {
+    fun turnOff(): String {
         val f = MainActivity.APP_FOLDER.absolutePath
         val d = MainActivity.DATA_FOLDER.absolutePath
         
         if (checkDirExists(f) && checkDirExists(d)) {
             val scriptTxtData = executeShizukuCommandWithOutput("cat \"$f/script.txt\"").trim()
-            val suffix = if (scriptTxtData.isNotEmpty() && !scriptTxtData.contains("No such file")) {
-                scriptTxtData
-            } else {
-                "default"
+            if (scriptTxtData.isEmpty() || scriptTxtData.contains("No such file")) {
+                return "MISSING_SCRIPT_TXT"
             }
+            val suffix = scriptTxtData
             val s = "/storage/emulated/0/Android/data/com.mujahi.script.$suffix"
             
             val cmd = "mv \"$f\" \"$s\" && mv \"$d\" \"$f\""
-            return executeShizukuCommand(cmd)
+            val success = executeShizukuCommand(cmd)
+            return if (success) "SUCCESS" else "ERROR"
         }
-        return false
+        return "DIR_NOT_FOUND"
     }
 
     fun copyDirectory(source: File, target: File) {

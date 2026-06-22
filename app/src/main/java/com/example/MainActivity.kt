@@ -616,13 +616,13 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    fun executeTurnOffGlobal(onComplete: (() -> Unit)? = null) {
+    fun executeTurnOffGlobal(onComplete: ((String) -> Unit)? = null) {
         Thread {
-            RenameUtil.turnOff()
+            val result = RenameUtil.turnOff()
             runOnUiThread {
                 AlarmReceiver.cancelAlarm(this)
                 prefs.edit().remove(KEY_AUTO_OFF_TIME).apply()
-                onComplete?.invoke()
+                onComplete?.invoke(result)
             }
         }.start()
     }
