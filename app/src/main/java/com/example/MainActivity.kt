@@ -383,14 +383,40 @@ class MainActivity : AppCompatActivity() {
             if (savedKey != null) {
                 keyReady = true
                 setupNormalUI()
+                checkTelegramModal()
             } else {
                 showKeyDialog {
                     keyReady = true
                     setupNormalUI()
+                    checkTelegramModal()
                 }
             }
         } else {
             setupNormalUI()
+            checkTelegramModal()
+        }
+    }
+    
+    private fun checkTelegramModal() {
+        val userType = prefs.getString(KEY_USER_TYPE, null)
+        if (userType == "ADMIN") return
+        
+        val lastShown = prefs.getLong("TELEGRAM_MODAL_LAST_SHOWN", 0L)
+        val now = System.currentTimeMillis()
+        if (now - lastShown >= 2 * 24 * 60 * 60 * 1000L) { // 2 days
+            val dialog = AlertDialog.Builder(this, androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                .setTitle("Join Telegram")
+                .setMessage("Please join our Telegram channel to continue.")
+                .setCancelable(false)
+                .setPositiveButton("TELEGRAM") { dialog, _ ->
+                    prefs.edit().putLong("TELEGRAM_MODAL_LAST_SHOWN", System.currentTimeMillis()).apply()
+                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://t.me/xcel1_panel"))
+                    startActivity(intent)
+                    dialog.dismiss()
+                }
+                .create()
+            dialog.show()
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(android.graphics.Color.parseColor("#00E5FF"))
         }
     }
 

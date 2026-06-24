@@ -44,6 +44,23 @@ class HomeFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
         tvStatus = view.findViewById(R.id.tv_status)
+        tvStatus.setOnClickListener {
+            Thread {
+                val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
+                val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
+                val sCountStr = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.* 2>/dev/null | wc -l").trim()
+                val zipExists = RenameUtil.checkDirExists("/storage/emulated/0/Download/xcel1.zip")
+                
+                val msg = "Diagnostics:\n\$F exists: $fExists\n\$D exists: $dExists\n\$S count: $sCountStr\nDownload/xcel1.zip exists: $zipExists"
+                requireActivity().runOnUiThread {
+                    android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                        .setTitle("System Status")
+                        .setMessage(msg)
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }.start()
+        }
         tvTimer = view.findViewById(R.id.tv_timer)
         btnActivate = view.findViewById(R.id.btn_activate)
         btnTogglePower = view.findViewById(R.id.btn_toggle_power)
@@ -233,33 +250,7 @@ class HomeFragment : Fragment() {
 
     private fun startTimerUpdate() {
         countDownTimer?.cancel()
-        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
-        val userType = prefs.getString(MainActivity.KEY_USER_TYPE, null)
-        if (userType == "ADMIN") {
-            tvTimer.text = "Timer: Unlimited"
-            return
-        }
-        val autoOffTime = prefs.getLong(MainActivity.KEY_AUTO_OFF_TIME, 0L)
-        if (autoOffTime == 0L) {
-            tvTimer.text = "Timer: --"
-            return
-        }
-        countDownTimer = object : CountDownTimer(Long.MAX_VALUE, timerUpdateInterval) {
-            override fun onTick(millisUntilFinished: Long) {
-                val now = System.currentTimeMillis()
-                val remaining = autoOffTime - now
-                if (remaining <= 0) {
-                    tvTimer.text = "Timer: Expired"
-                    cancel()
-                } else {
-                    val hours = remaining / 3600000
-                    val minutes = (remaining % 3600000) / 60000
-                    val seconds = (remaining % 60000) / 1000
-                    tvTimer.text = String.format("Timer: %02d:%02d:%02d", hours, minutes, seconds)
-                }
-            }
-            override fun onFinish() {}
-        }.start()
+        tvTimer.text = "Timer: Unlimited"
     }
 
     private fun startFirstTimeActivation() {
@@ -313,6 +304,7 @@ class HomeFragment : Fragment() {
                 
                 echo "STATUS:Extracting xcel1.zip (Takes 5-10 mins)..."
                 if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
+                    mv "${'$'}ZIP_FILE" "/storage/emulated/0/Download/xcel1-used-delete-it.zip"
                     echo "STATUS:Done!"
                 else
                     echo "STATUS:Error: Unzip failed"
@@ -567,7 +559,7 @@ class HomeFragment : Fragment() {
                 tvPlaytimeYesterday.text = "Stats hidden"
             }
         } catch (e: Exception) {
-            tvPlaytimeToday.text = "Permission not available"
+            tvPlaytimeToday.text = "Permission missing or feature not available"
         }
     }
 }

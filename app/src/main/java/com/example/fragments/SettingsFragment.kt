@@ -26,23 +26,27 @@ class SettingsFragment : Fragment() {
 
     private fun processNewScript() {
         val ctx = context ?: return
-
-        val progressDialog = android.app.AlertDialog.Builder(ctx)
-            .setTitle("Applying Script")
-            .setMessage("Starting setup...")
-            .setCancelable(false)
-            .create()
-        progressDialog.show()
-
-        Thread {
-            // Step 1: If panel is ON, turn it OFF
-            if (RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath) &&
-                RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)) {
-                requireActivity().runOnUiThread { progressDialog.setMessage("Turning OFF existing panel...") }
-                RenameUtil.turnOff()
-            }
-
-            requireActivity().runOnUiThread { progressDialog.setMessage("Executing script...") }
+        
+        android.app.AlertDialog.Builder(ctx, androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+            .setTitle("New Script")
+            .setMessage("This will backup data, turn off active scripts, and extract xcel1.zip from Downloads. Continue?")
+            .setPositiveButton("Yes") { _, _ ->
+                val progressDialog = android.app.AlertDialog.Builder(ctx)
+                    .setTitle("Applying Script")
+                    .setMessage("Starting setup...")
+                    .setCancelable(false)
+                    .create()
+                progressDialog.show()
+        
+                Thread {
+                    // Step 1: If panel is ON, turn it OFF
+                    if (RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath) &&
+                        RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)) {
+                        requireActivity().runOnUiThread { progressDialog.setMessage("Turning OFF existing panel...") }
+                        RenameUtil.turnOff()
+                    }
+        
+                    requireActivity().runOnUiThread { progressDialog.setMessage("Executing script...") }
 
             // Step 2 & 3: Copy F to D and extract ZIP
             RenameUtil.executeShizukuScriptAsync(
@@ -67,6 +71,7 @@ class SettingsFragment : Fragment() {
                     
                     echo "STATUS:Extracting xcel1.zip..."
                     if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
+                        mv "${'$'}ZIP_FILE" "/storage/emulated/0/Download/xcel1-used-delete-it.zip"
                         echo "STATUS:Done!"
                     else
                         echo "STATUS:Error: Unzip failed"
@@ -99,6 +104,9 @@ class SettingsFragment : Fragment() {
                 }
             )
         }.start()
+        }
+        .setNegativeButton("No", null)
+        .show()
     }
 
     override fun onCreateView(
