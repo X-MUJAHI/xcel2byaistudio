@@ -60,7 +60,7 @@ class SettingsFragment : Fragment() {
                     
                     echo "STATUS:Copying folder to data backup..."
                     if [ ! -d "${'$'}d" ]; then
-                        if ! cp -a "${'$'}f" "${'$'}d"; then
+                        if ! cp -pr "${'$'}f" "${'$'}d"; then
                             cp -r "${'$'}f" "${'$'}d"
                         fi
                     fi
