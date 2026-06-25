@@ -125,7 +125,7 @@ class WifiManagerFragment : Fragment() {
                     setPadding(32, 32, 32, 32)
                     textSize = 12f
                     typeface = android.graphics.Typeface.MONOSPACE
-                    setTextColor(android.graphics.Color.WHITE)
+                    setTextColor(android.graphics.Color.BLACK)
                 }
                 sv.addView(tv)
 
