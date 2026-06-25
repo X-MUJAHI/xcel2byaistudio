@@ -60,6 +60,50 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
     </LinearLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="16dp">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button
+                android:id="@+id/btn_current_network"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Current Network"
+                android:backgroundTint="#263238"
+                android:textColor="#00E5FF"
+                android:layout_marginEnd="8dp" />
+            <Button
+                android:id="@+id/btn_open_ports"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Open Ports"
+                android:backgroundTint="#263238"
+                android:textColor="#00E5FF"
+                android:layout_marginEnd="8dp" />
+            <Button
+                android:id="@+id/btn_net_stats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Net Stats"
+                android:backgroundTint="#263238"
+                android:textColor="#00E5FF"
+                android:layout_marginEnd="8dp"/>
+            <Button
+                android:id="@+id/btn_conn_summary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#263238"
+                android:textColor="#00E5FF"
+                android:text="Connectivity" />
+        </LinearLayout>
+    </HorizontalScrollView>
     
     <TextView
         android:layout_width="match_parent"

@@ -38,23 +38,50 @@ class WifiManagerFragment : Fragment() {
         val switchWifi = view.findViewById<Switch>(R.id.switch_wifi)
         
         // This is deprecated in API 29+ but we can try 
-        switchWifi.isChecked = wifiManager.isWifiEnabled
-        tvStatus.text = if (wifiManager.isWifiEnabled) "WiFi Enabled" else "WiFi Disabled"
+        Thread {
+            val status = RenameUtil.executeShizukuCommandWithOutput("settings get global wifi_on").trim()
+            requireActivity().runOnUiThread {
+                val isOn = status == "1" || wifiManager.isWifiEnabled
+                switchWifi.isChecked = isOn
+                tvStatus.text = if (isOn) "WiFi Enabled" else "WiFi Disabled"
+            }
+        }.start()
         
         switchWifi.setOnCheckedChangeListener { _, isChecked ->
             try {
-                // we can also use shizuku `cmd wifi set-wifi-enabled enabled/disabled` if needed
-                if (RenameUtil.executeShizukuCommand("cmd wifi set-wifi-enabled " + if (isChecked) "enabled" else "disabled")) {
-                    tvStatus.text = if (isChecked) "WiFi Enabled" else "WiFi Disabled"
-                } else {
-                    // Fallback to older API
-                    wifiManager.isWifiEnabled = isChecked
-                    tvStatus.text = if (isChecked) "WiFi Enabled" else "WiFi Disabled"
-                }
+                Thread {
+                    val cmd = if (isChecked) "svc wifi enable" else "svc wifi disable"
+                    if (RenameUtil.executeShizukuCommand(cmd)) {
+                        requireActivity().runOnUiThread { tvStatus.text = if (isChecked) "WiFi Enabled" else "WiFi Disabled" }
+                    } else {
+                        // Fallback
+                        if (RenameUtil.executeShizukuCommand("cmd wifi set-wifi-enabled " + if (isChecked) "enabled" else "disabled")) {
+                            requireActivity().runOnUiThread { tvStatus.text = if (isChecked) "WiFi Enabled" else "WiFi Disabled" }
+                        } else {
+                            requireActivity().runOnUiThread { 
+                                wifiManager.isWifiEnabled = isChecked
+                                tvStatus.text = if (isChecked) "WiFi Enabled" else "WiFi Disabled"
+                            }
+                        }
+                    }
+                }.start()
             } catch (e: Exception) {
                 Toast.makeText(context, "Cannot change WiFi state", Toast.LENGTH_SHORT).show()
                 switchWifi.isChecked = !isChecked
             }
+        }
+
+        view.findViewById<android.widget.Button>(R.id.btn_current_network).setOnClickListener { 
+            showDiagDialog("Current Network", "dumpsys wifi | grep -A 15 \"WifiConfiguration\"") 
+        }
+        view.findViewById<android.widget.Button>(R.id.btn_open_ports).setOnClickListener { 
+            showDiagDialog("Open Ports", "netstat -tuln") 
+        }
+        view.findViewById<android.widget.Button>(R.id.btn_net_stats).setOnClickListener { 
+            showDiagDialog("Network Stats", "dumpsys netstats detail | head -n 100") 
+        }
+        view.findViewById<android.widget.Button>(R.id.btn_conn_summary).setOnClickListener { 
+            showDiagDialog("Connectivity", "dumpsys connectivity | head -n 100") 
         }
 
         val btnMenuMore = view.findViewById<ImageView>(R.id.btn_menu_more)
@@ -78,6 +105,37 @@ class WifiManagerFragment : Fragment() {
         loadWifiPasswords()
 
         return view
+    }
+
+    private fun showDiagDialog(title: String, command: String) {
+        val progressDialog = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+            .setTitle(title)
+            .setMessage("Loading...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        Thread {
+            val output = RenameUtil.executeShizukuCommandWithOutput(command)
+            requireActivity().runOnUiThread {
+                progressDialog.dismiss()
+                val sv = android.widget.ScrollView(requireContext())
+                val tv = TextView(requireContext()).apply {
+                    text = output.ifBlank { "No output / Permission denied" }
+                    setPadding(32, 32, 32, 32)
+                    textSize = 12f
+                    typeface = android.graphics.Typeface.MONOSPACE
+                    setTextColor(android.graphics.Color.WHITE)
+                }
+                sv.addView(tv)
+
+                android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                    .setTitle(title)
+                    .setView(sv)
+                    .setPositiveButton("Close", null)
+                    .show()
+            }
+        }.start()
     }
 
     private fun loadWifiPasswords() {
@@ -176,6 +234,34 @@ class WifiManagerFragment : Fragment() {
             val w = list[position]
             holder.tvSsid.text = w.ssid
             holder.tvPsk.text = w.psk
+            
+            holder.itemView.setOnClickListener {
+                val options = arrayOf("Connect", "Copy Password", "Forget Network (Experimental)")
+                android.app.AlertDialog.Builder(it.context, androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                    .setTitle(w.ssid)
+                    .setItems(options) { _, which ->
+                        when (which) {
+                            0 -> {
+                                Toast.makeText(it.context, "Connecting...", Toast.LENGTH_SHORT).show()
+                                Thread {
+                                    val cmd = "cmd wifi connect-network \"${w.ssid}\" wpa2 \"${w.psk}\""
+                                    RenameUtil.executeShizukuCommand(cmd)
+                                    requireActivity().runOnUiThread { Toast.makeText(it.context, "Connect command sent", Toast.LENGTH_SHORT).show() }
+                                }.start()
+                            }
+                            1 -> {
+                                val clipboard = it.context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("WiFi Password", w.psk)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(it.context, "Password copied", Toast.LENGTH_SHORT).show()
+                            }
+                            2 -> {
+                                Toast.makeText(it.context, "Network ID parsing required to forget network. You can forget it from main settings.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                    .show()
+            }
         }
         override fun getItemCount() = list.size
     }
