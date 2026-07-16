@@ -48,24 +48,34 @@ class SettingsFragment : Fragment() {
         
                     requireActivity().runOnUiThread { progressDialog.setMessage("Executing script...") }
 
-            // Step 2 & 3: Copy F to D and extract ZIP
+            // Step 2 & 3: Copy G to G_DATA and extract ZIP
             RenameUtil.executeShizukuScriptAsync(
                 script = """
                     #!/system/bin/sh
                     ZIP_FILE="/storage/emulated/0/Download/xcel1.zip"
                     DEST_DIR="/storage/emulated/0/Android/data"
-                    f="/storage/emulated/0/Android/data/com.dts.freefiremax"
-                    d="/storage/emulated/0/Android/data/com.mujahi.data"
+                    BASE_DIR="/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+                    G_DIR="${'$'}BASE_DIR/gameassetbundles"
+                    G_DATA="${'$'}BASE_DIR/gameassetbundles-data"
+                    FILEINFO="${'$'}BASE_DIR/fileinfo"
+                    FILEINFO_DATA="${'$'}BASE_DIR/fileinfo-data"
                     
                     if [ ! -f "${'$'}ZIP_FILE" ]; then
                         echo "STATUS:Error: Zip file not found in Download folder" >&2
                         exit 1
                     fi
                     
-                    echo "STATUS:Copying folder to data backup..."
-                    if [ ! -d "${'$'}d" ]; then
-                        if ! cp -pr "${'$'}f" "${'$'}d"; then
-                            cp -r "${'$'}f" "${'$'}d"
+                    echo "STATUS:Copying gameassetbundles backup..."
+                    if [ ! -d "${'$'}G_DATA" ]; then
+                        if ! cp -pr "${'$'}G_DIR" "${'$'}G_DATA"; then
+                            cp -r "${'$'}G_DIR" "${'$'}G_DATA"
+                        fi
+                    fi
+
+                    echo "STATUS:Copying fileinfo backup..."
+                    if [ ! -f "${'$'}FILEINFO_DATA" ]; then
+                        if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"; then
+                            cp "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"
                         fi
                     fi
                     
@@ -126,42 +136,18 @@ class SettingsFragment : Fragment() {
         val tvAvailableScripts = view.findViewById<TextView>(R.id.tv_available_scripts)
 
         Thread {
-            val f = MainActivity.APP_FOLDER.absolutePath
+            val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+            val gData = "$baseDir/gameassetbundles-data"
             var current = "None"
-            if (RenameUtil.checkDirExists(f)) {
-                val scriptTxt = RenameUtil.executeShizukuCommandWithOutput("cat \"$f/script.txt\"").trim()
-                if (scriptTxt.isNotEmpty() && !scriptTxt.contains("No such file")) {
-                    current = scriptTxt
-                } else if (RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)) {
-                    current = "Unknown (ON)"
-                }
+            if (RenameUtil.checkDirExists(gData)) {
+                current = "Default (ON)"
+            } else {
+                current = "Default (OFF)"
             }
             
-            val lsOutput = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.*").trim()
-            val available = mutableListOf<String>()
-            if (lsOutput.isNotEmpty() && !lsOutput.contains("No such file")) {
-                val lines = lsOutput.split("\n")
-                for (line in lines) {
-                    if (line.isNotBlank()) {
-                        val path = line.trim()
-                        val scriptTxt = RenameUtil.executeShizukuCommandWithOutput("cat \"$path/script.txt\"").trim()
-                        if (scriptTxt.isNotEmpty() && !scriptTxt.contains("No such file")) {
-                            available.add(scriptTxt)
-                        } else {
-                            val suffix = path.substringAfterLast("com.mujahi.script.")
-                            available.add(suffix)
-                        }
-                    }
-                }
-            }
-
             requireActivity().runOnUiThread {
                 tvCurrentScript.text = "Current: $current"
-                if (available.isEmpty()) {
-                    tvAvailableScripts.text = "Available Scripts:\nNone"
-                } else {
-                    tvAvailableScripts.text = "Available Scripts:\n- " + available.joinToString("\n- ")
-                }
+                tvAvailableScripts.text = "Available Scripts:\n- Default Script"
             }
         }.start()
 

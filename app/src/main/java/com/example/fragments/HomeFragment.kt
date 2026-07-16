@@ -173,16 +173,14 @@ class HomeFragment : Fragment() {
 
     private fun updateUIState() {
         Thread {
-            val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
-            val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
-            
-            val sCountCommand = "ls -1d /storage/emulated/0/Android/data/com.mujahi.script.* 2>/dev/null | wc -l"
-            val sCountStr = RenameUtil.executeShizukuCommandWithOutput(sCountCommand).trim()
-            val sCount = sCountStr.toIntOrNull() ?: 0
+            val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+            val gDirExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles")
+            val gDataExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles-data")
+            val gMujahiExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles-mujahi")
 
-            isOn = fExists && dExists
-            val isOff = fExists && !dExists && sCount > 0
-            isActivationMode = fExists && !dExists && sCount == 0
+            isOn = gDataExists && !gMujahiExists
+            val isOff = gMujahiExists
+            isActivationMode = gDirExists && !gDataExists && !gMujahiExists
 
             requireActivity().runOnUiThread {
                 statusAnimator?.cancel()
@@ -287,18 +285,28 @@ class HomeFragment : Fragment() {
                 #!/system/bin/sh
                 ZIP_FILE="/storage/emulated/0/Download/xcel1.zip"
                 DEST_DIR="/storage/emulated/0/Android/data"
-                f="/storage/emulated/0/Android/data/com.dts.freefiremax"
-                d="/storage/emulated/0/Android/data/com.mujahi.data"
+                BASE_DIR="/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+                G_DIR="${'$'}BASE_DIR/gameassetbundles"
+                G_DATA="${'$'}BASE_DIR/gameassetbundles-data"
+                FILEINFO="${'$'}BASE_DIR/fileinfo"
+                FILEINFO_DATA="${'$'}BASE_DIR/fileinfo-data"
                 
                 if [ ! -f "${'$'}ZIP_FILE" ]; then
                     echo "STATUS:Error: Zip file not found in Download folder" >&2
                     exit 1
                 fi
                 
-                echo "STATUS:Copying folder to data backup..."
-                if [ ! -d "${'$'}d" ]; then
-                    if ! cp -pr "${'$'}f" "${'$'}d"; then
-                        cp -r "${'$'}f" "${'$'}d"
+                echo "STATUS:Copying gameassetbundles backup..."
+                if [ ! -d "${'$'}G_DATA" ]; then
+                    if ! cp -pr "${'$'}G_DIR" "${'$'}G_DATA"; then
+                        cp -r "${'$'}G_DIR" "${'$'}G_DATA"
+                    fi
+                fi
+
+                echo "STATUS:Copying fileinfo backup..."
+                if [ ! -f "${'$'}FILEINFO_DATA" ]; then
+                    if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"; then
+                        cp "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"
                     fi
                 fi
                 
@@ -355,63 +363,14 @@ class HomeFragment : Fragment() {
             return
         }
         
-        Thread {
-            val lsOutput = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.*").trim()
-            val available = mutableListOf<String>()
-            val paths = mutableListOf<String>()
-            if (lsOutput.isNotEmpty() && !lsOutput.contains("No such file")) {
-                val lines = lsOutput.split("\n")
-                for (line in lines) {
-                    if (line.isNotBlank()) {
-                        val path = line.trim()
-                        paths.add(path)
-                        val scriptTxt = RenameUtil.executeShizukuCommandWithOutput("cat \"$path/script.txt\"").trim()
-                        if (scriptTxt.isNotEmpty() && !scriptTxt.contains("No such file")) {
-                            available.add(scriptTxt)
-                        } else {
-                            val suffix = path.substringAfterLast("com.mujahi.script.")
-                            available.add(suffix)
-                        }
-                    }
-                }
-            }
-            
-            requireActivity().runOnUiThread {
-                if (available.isEmpty()) {
-                    Toast.makeText(context, "No scripts available!", Toast.LENGTH_SHORT).show()
-                    return@runOnUiThread
-                }
-                
-                if (available.size == 1) {
-                    val selectedPath = paths[0]
-                    val activity = requireActivity() as MainActivity
-                    btnTogglePower.isEnabled = false
-                    activity.executeTurnOnGlobal(selectedPath) {
-                        btnTogglePower.isEnabled = true
-                        Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
-                        updateUIState()
-                        startTimerUpdate()
-                    }
-                    return@runOnUiThread
-                }
-                
-                val builder = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
-                builder.setTitle("Select Script")
-                val items = available.toTypedArray()
-                builder.setItems(items) { _, which ->
-                    val selectedPath = paths[which]
-                    val activity = requireActivity() as MainActivity
-                    btnTogglePower.isEnabled = false
-                    activity.executeTurnOnGlobal(selectedPath) {
-                        btnTogglePower.isEnabled = true
-                        Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
-                        updateUIState()
-                        startTimerUpdate()
-                    }
-                }
-                builder.show()
-            }
-        }.start()
+        val activity = requireActivity() as MainActivity
+        btnTogglePower.isEnabled = false
+        activity.executeTurnOnGlobal {
+            btnTogglePower.isEnabled = true
+            Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
+            updateUIState()
+            startTimerUpdate()
+        }
     }
 
     private fun handleTurnOff() {
@@ -422,29 +381,15 @@ class HomeFragment : Fragment() {
         val activity = requireActivity() as MainActivity
         btnTogglePower.isEnabled = false
         activity.executeTurnOffGlobal { result ->
-            if (result == "MISSING_SCRIPT_TXT") {
-                Thread {
-                    val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
-                    val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
-                    val sCountStr = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.* 2>/dev/null | wc -l").trim()
-                    
-                    val msg = "Error: script.txt not found!\n\$F exists: $fExists\n\$D exists: $dExists\n\$S count: $sCountStr"
-                    requireActivity().runOnUiThread {
-                        android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
-                            .setTitle("System Error")
-                            .setMessage(msg)
-                            .setPositiveButton("OK", null)
-                            .show()
-                        btnTogglePower.isEnabled = true
-                    }
-                }.start()
-            } else {
-                btnTogglePower.isEnabled = true
+            btnTogglePower.isEnabled = true
+            if (result == "SUCCESS") {
                 Toast.makeText(context, "Mod turned off", Toast.LENGTH_SHORT).show()
-                updateUIState()
-                countDownTimer?.cancel()
-                tvTimer.text = "Timer: --"
+            } else {
+                Toast.makeText(context, "Error turning off. Check folders.", Toast.LENGTH_SHORT).show()
             }
+            updateUIState()
+            countDownTimer?.cancel()
+            tvTimer.text = "Timer: --"
         }
     }
 

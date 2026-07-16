@@ -155,30 +155,43 @@ object RenameUtil {
         }
     }
 
-    fun turnOn(scriptPath: String): Boolean {
-        val f = MainActivity.APP_FOLDER.absolutePath
-        val d = MainActivity.DATA_FOLDER.absolutePath
+    fun turnOn(): Boolean {
+        val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+        val gDir = "$baseDir/gameassetbundles"
+        val gData = "$baseDir/gameassetbundles-data"
+        val gMujahi = "$baseDir/gameassetbundles-mujahi"
+        val fileinfo = "$baseDir/fileinfo"
+        val fileinfoData = "$baseDir/fileinfo-data"
+        val fileinfoMujahi = "$baseDir/fileinfo-mujahi"
         
-        if (checkDirExists(f) && checkDirExists(scriptPath) && !checkDirExists(d)) {
-            val cmd = "mv \"$f\" \"$d\" && mv \"$scriptPath\" \"$f\""
+        if (checkDirExists(gMujahi)) {
+            val cmd = """
+                mv "$gDir" "$gData" && \
+                mv "$gMujahi" "$gDir" && \
+                mv "$fileinfo" "$fileinfoData" && \
+                mv "$fileinfoMujahi" "$fileinfo"
+            """.trimIndent()
             return executeShizukuCommand(cmd)
         }
         return false
     }
 
     fun turnOff(): String {
-        val f = MainActivity.APP_FOLDER.absolutePath
-        val d = MainActivity.DATA_FOLDER.absolutePath
+        val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+        val gDir = "$baseDir/gameassetbundles"
+        val gData = "$baseDir/gameassetbundles-data"
+        val gMujahi = "$baseDir/gameassetbundles-mujahi"
+        val fileinfo = "$baseDir/fileinfo"
+        val fileinfoData = "$baseDir/fileinfo-data"
+        val fileinfoMujahi = "$baseDir/fileinfo-mujahi"
         
-        if (checkDirExists(f) && checkDirExists(d)) {
-            val scriptTxtData = executeShizukuCommandWithOutput("cat \"$f/script.txt\"").trim()
-            if (scriptTxtData.isEmpty() || scriptTxtData.contains("No such file")) {
-                return "MISSING_SCRIPT_TXT"
-            }
-            val suffix = scriptTxtData
-            val s = "/storage/emulated/0/Android/data/com.mujahi.script.$suffix"
-            
-            val cmd = "mv \"$f\" \"$s\" && mv \"$d\" \"$f\""
+        if (checkDirExists(gData)) {
+            val cmd = """
+                mv "$gDir" "$gMujahi" && \
+                mv "$gData" "$gDir" && \
+                mv "$fileinfo" "$fileinfoMujahi" && \
+                mv "$fileinfoData" "$fileinfo"
+            """.trimIndent()
             val success = executeShizukuCommand(cmd)
             return if (success) "SUCCESS" else "ERROR"
         }

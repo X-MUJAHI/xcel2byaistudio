@@ -630,9 +630,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.bottom_bar).visibility = View.VISIBLE
     }
 
-    fun executeTurnOnGlobal(scriptPath: String, onComplete: (() -> Unit)? = null) {
+    fun executeTurnOnGlobal(onComplete: (() -> Unit)? = null) {
         Thread {
-            RenameUtil.turnOn(scriptPath)
+            RenameUtil.turnOn()
             runOnUiThread {
                 if (prefs.getString(KEY_USER_TYPE, null) == "NORMAL") {
                     scheduleAutoOffAlarm()
@@ -661,8 +661,9 @@ class MainActivity : AppCompatActivity() {
 
     fun forceTurnOffIfNeeded(callback: () -> Unit) {
         Thread {
-            if (RenameUtil.checkDirExists(APP_FOLDER.absolutePath) &&
-                RenameUtil.checkDirExists(DATA_FOLDER.absolutePath)) {
+            val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+            val gData = "$baseDir/gameassetbundles-data"
+            if (RenameUtil.checkDirExists(gData)) {
                 RenameUtil.turnOff()
                 runOnUiThread {
                     AlarmReceiver.cancelAlarm(this)
