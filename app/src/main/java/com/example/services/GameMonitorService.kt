@@ -69,7 +69,7 @@ class GameMonitorService : Service() {
     private fun isAppInForeground(): Boolean {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val time = System.currentTimeMillis()
-        val events = usm.queryEvents(time - 60000, time)
+        val events = usm.queryEvents(time - 10000, time) // checking last 10 seconds is more than enough
         var lastResumedPkg: String? = null
         var maxTime = 0L
         while (events.hasNextEvent()) {
@@ -79,7 +79,7 @@ class GameMonitorService : Service() {
                 if (ev.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                     lastResumedPkg = ev.packageName
                     maxTime = ev.timeStamp
-                } else if (ev.eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
+                } else if (ev.eventType == UsageEvents.Event.ACTIVITY_PAUSED || ev.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
                     if (lastResumedPkg == ev.packageName) {
                         lastResumedPkg = null
                     }
