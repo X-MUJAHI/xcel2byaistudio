@@ -112,11 +112,51 @@ class HomeFragment : Fragment() {
         }
         
         btnOpenGame.setOnClickListener {
+            val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
+            val userType = prefs.getString(MainActivity.KEY_USER_TYPE, null)
             val launchIntent = requireContext().packageManager.getLaunchIntentForPackage("com.dts.freefiremax")
-            if (launchIntent != null) {
-                startActivity(launchIntent)
-            } else {
+            
+            if (launchIntent == null) {
                 Toast.makeText(context, "Free Fire MAX not found", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            if (userType == "NORMAL") {
+                // Check usage stats permission
+                val appOps = requireContext().getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+                val mode = appOps.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, 
+                        android.os.Process.myUid(), requireContext().packageName)
+                if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
+                    Toast.makeText(context, "Please grant Usage Access permission to track the game!", Toast.LENGTH_LONG).show()
+                    startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                    return@setOnClickListener
+                }
+                
+                val progressDialog = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+                    .setTitle("Opening Game")
+                    .setMessage("Turning ON mod and launching...")
+                    .setCancelable(false)
+                    .create()
+                progressDialog.show()
+                
+                val activity = requireActivity() as MainActivity
+                activity.executeTurnOnGlobal {
+                    progressDialog.dismiss()
+                    updateUIState()
+                    Toast.makeText(context, "Mod turned on! Launching game...", Toast.LENGTH_SHORT).show()
+                    
+                    // Start GameMonitorService
+                    val serviceIntent = Intent(requireContext(), com.example.services.GameMonitorService::class.java)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        requireContext().startForegroundService(serviceIntent)
+                    } else {
+                        requireContext().startService(serviceIntent)
+                    }
+                    
+                    startActivity(launchIntent)
+                }
+            } else {
+                startActivity(launchIntent)
             }
         }
 
@@ -178,9 +218,13 @@ class HomeFragment : Fragment() {
             val gDataExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles-data")
             val gMujahiExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles-mujahi")
 
-            isOn = gDataExists && !gMujahiExists
-            val isOff = gMujahiExists
-            isActivationMode = gDirExists && !gDataExists && !gMujahiExists
+            val fileInfoExists = RenameUtil.checkFileExists("$baseDir/fileinfo")
+            val fileInfoDataExists = RenameUtil.checkFileExists("$baseDir/fileinfo-data")
+            val fileInfoMujahiExists = RenameUtil.checkFileExists("$baseDir/fileinfo-mujahi")
+
+            isOn = gDataExists && !gMujahiExists && fileInfoDataExists && !fileInfoMujahiExists
+            val isOff = gMujahiExists && fileInfoMujahiExists
+            isActivationMode = gDirExists && !gDataExists && !gMujahiExists && fileInfoExists && !fileInfoDataExists && !fileInfoMujahiExists
 
             requireActivity().runOnUiThread {
                 statusAnimator?.cancel()
@@ -241,7 +285,14 @@ class HomeFragment : Fragment() {
                 }
 
                 btnActivate.visibility = if (isActivationMode) View.VISIBLE else View.GONE
-                btnTogglePower.visibility = if (isOn || isOff) View.VISIBLE else View.GONE
+                
+                val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
+                val userType = prefs.getString(MainActivity.KEY_USER_TYPE, null)
+                if (userType == "NORMAL") {
+                    btnTogglePower.visibility = View.GONE
+                } else {
+                    btnTogglePower.visibility = if (isOn || isOff) View.VISIBLE else View.GONE
+                }
             }
         }.start()
     }
@@ -347,6 +398,14 @@ class HomeFragment : Fragment() {
                     if (success) {
                         Toast.makeText(ctx, "Activation successful!", Toast.LENGTH_SHORT).show()
                         updateUIState()
+                        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
+                        val userType = prefs.getString(MainActivity.KEY_USER_TYPE, null)
+                        if (userType == "NORMAL") {
+                            Toast.makeText(ctx, "Will automatically turn off in 5 seconds...", Toast.LENGTH_SHORT).show()
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                handleTurnOff()
+                            }, 5000)
+                        }
                     } else {
                         Toast.makeText(ctx, "Error during activation.", Toast.LENGTH_LONG).show()
                         btnActivate.isEnabled = true

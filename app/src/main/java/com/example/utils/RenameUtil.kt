@@ -155,6 +155,31 @@ object RenameUtil {
         }
     }
 
+    fun checkFileExists(path: String): Boolean {
+        if (!shizukuAvailable()) {
+            return File(path).exists()
+        }
+        return try {
+            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            ).apply {
+                isAccessible = true
+            }
+            val process = newProcessMethod.invoke(
+                null,
+                arrayOf("sh", "-c", "[ -f \"$path\" ]"),
+                null,
+                null
+            ) as rikka.shizuku.ShizukuRemoteProcess
+            process.waitFor() == 0
+        } catch (e: Exception) {
+            File(path).exists()
+        }
+    }
+
     fun turnOn(): Boolean {
         val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
         val gDir = "$baseDir/gameassetbundles"

@@ -340,6 +340,9 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton("Exit") { _, _ ->
                     finish()
                 }
+                .setNeutralButton("Continue Anyway") { _, _ ->
+                    proceedChecks(ignoreShizuku = true)
+                }
                 .show()
             return
         }
@@ -356,9 +359,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun proceedChecks() {
+    private fun proceedChecks(ignoreShizuku: Boolean = false) {
         if (!permissionReady) return
-        if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+        if (!ignoreShizuku && (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED)) {
             checkAndRequestShizuku()
             return
         }
