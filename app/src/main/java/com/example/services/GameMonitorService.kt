@@ -22,6 +22,11 @@ class GameMonitorService : Service() {
     private val checkInterval = 1000L
     private val TARGET_PKG = "com.dts.freefiremax"
 
+    private var lastQueryTime = System.currentTimeMillis() - 1000 * 60 * 60 * 2 // 2 hours ago
+    private var currentForegroundPkg: String? = null
+    private var lastSeenForegroundTime = System.currentTimeMillis()
+    private val GRACE_PERIOD_MS = 3 * 60 * 1000L // 3 minutes
+
     override fun onCreate() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -32,6 +37,7 @@ class GameMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastSeenForegroundTime = System.currentTimeMillis() // Reset grace period on every start request
         val notification = NotificationCompat.Builder(this, "monitor_channel")
             .setContentTitle("Game Monitor Active")
             .setContentText("Monitoring $TARGET_PKG")
@@ -51,8 +57,14 @@ class GameMonitorService : Service() {
             if (!isRunning) return
             
             Thread {
-                val isForeground = isAppInForeground()
-                if (!isForeground) {
+                updateForegroundApp()
+                val isForeground = (currentForegroundPkg == TARGET_PKG)
+                
+                if (isForeground) {
+                    lastSeenForegroundTime = System.currentTimeMillis()
+                }
+
+                if (!isForeground && (System.currentTimeMillis() - lastSeenForegroundTime > GRACE_PERIOD_MS)) {
                     // Turn OFF
                     if (RenameUtil.checkDirExists("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android/gameassetbundles-data")) {
                         RenameUtil.turnOff()
@@ -66,28 +78,22 @@ class GameMonitorService : Service() {
         }
     }
 
-    private fun isAppInForeground(): Boolean {
+    private fun updateForegroundApp() {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val time = System.currentTimeMillis()
-        val events = usm.queryEvents(time - 10000, time) // checking last 10 seconds is more than enough
-        var lastResumedPkg: String? = null
-        var maxTime = 0L
+        val events = usm.queryEvents(lastQueryTime, time)
         while (events.hasNextEvent()) {
             val ev = UsageEvents.Event()
             events.getNextEvent(ev)
-            if (ev.timeStamp > maxTime) {
-                if (ev.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                    lastResumedPkg = ev.packageName
-                    maxTime = ev.timeStamp
-                } else if (ev.eventType == UsageEvents.Event.ACTIVITY_PAUSED || ev.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
-                    if (lastResumedPkg == ev.packageName) {
-                        lastResumedPkg = null
-                    }
-                    maxTime = ev.timeStamp
+            if (ev.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                currentForegroundPkg = ev.packageName
+            } else if (ev.eventType == UsageEvents.Event.ACTIVITY_PAUSED || ev.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
+                if (currentForegroundPkg == ev.packageName) {
+                    currentForegroundPkg = null
                 }
             }
         }
-        return lastResumedPkg == TARGET_PKG
+        lastQueryTime = time
     }
 
     override fun onDestroy() {
