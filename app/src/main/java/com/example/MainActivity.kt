@@ -334,25 +334,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestShizuku() {
-        val userType = prefs.getString(KEY_USER_TYPE, null)
-        if (userType == "NORMAL") {
-            val appOps = getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
-            val mode = appOps.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, 
-                    android.os.Process.myUid(), packageName)
-            if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
-                AlertDialog.Builder(this)
-                    .setTitle("Usage Access Required")
-                    .setMessage("Please grant Usage Access permission to track the game status correctly.")
-                    .setCancelable(false)
-                    .setPositiveButton("Open Settings") { _, _ ->
-                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                    }
-                    .setNegativeButton("Exit") { _, _ ->
-                        finish()
-                    }
-                    .show()
-                return
-            }
+        val appOps = getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+        val mode = appOps.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, 
+                android.os.Process.myUid(), packageName)
+        if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
+            AlertDialog.Builder(this)
+                .setTitle("Usage Access Required")
+                .setMessage("Please grant Usage Access permission to track the game status correctly.")
+                .setCancelable(false)
+                .setPositiveButton("Open Settings") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                }
+                .setNegativeButton("Exit") { _, _ ->
+                    finish()
+                }
+                .show()
+            return
         }
 
         if (!Shizuku.pingBinder()) {

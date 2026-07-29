@@ -25,7 +25,8 @@ class AppManagerFragment : Fragment() {
         val sourceDir: String,
         val size: Long,
         val icon: android.graphics.drawable.Drawable?,
-        val installTime: Long
+        val installTime: Long,
+        val usageTimeToday: Long
     )
 
     private val appsList = mutableListOf<AppItem>()
@@ -73,8 +74,7 @@ class AppManagerFragment : Fragment() {
             adapter.notifyDataSetChanged()
         }
         view.findViewById<View>(R.id.btn_sort_usage).setOnClickListener {
-            // Placeholder: sorting by name instead
-            appsList.sortBy { it.name }
+            appsList.sortByDescending { it.usageTimeToday }
             adapter.notifyDataSetChanged()
         }
 
@@ -87,6 +87,18 @@ class AppManagerFragment : Fragment() {
         Thread {
             val pm = requireContext().packageManager
             val packages = pm.getInstalledPackages(0)
+            
+            val usm = requireContext().getSystemService(android.content.Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+            val cal = java.util.Calendar.getInstance()
+            val endTime = cal.timeInMillis
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+            cal.set(java.util.Calendar.MINUTE, 0)
+            cal.set(java.util.Calendar.SECOND, 0)
+            val startTime = cal.timeInMillis
+            
+            val stats = usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+            val usageMap = stats?.associateBy { it.packageName } ?: emptyMap()
+            
             appsList.clear()
             for (pi in packages) {
                 try {
@@ -95,14 +107,16 @@ class AppManagerFragment : Fragment() {
                     if (!showSystemApps && isSystemApp) continue
 
                     val name = pm.getApplicationLabel(appInfo).toString()
-                    val packageName = pi.packageName
+                    val packageName = pi.packageName ?: ""
                     val sourceDir = appInfo.sourceDir
                     val file = File(sourceDir ?: "")
                     val size = if (file.exists()) file.length() else 0L
                     val installTime = pi.firstInstallTime
                     val icon = pm.getApplicationIcon(appInfo)
                     
-                    appsList.add(AppItem(name, packageName ?: "", sourceDir ?: "", size, icon, installTime))
+                    val usage = usageMap[packageName]?.totalTimeInForeground ?: 0L
+                    
+                    appsList.add(AppItem(name, packageName, sourceDir ?: "", size, icon, installTime, usage))
                 } catch (e: Exception) {}
             }
             appsList.sortBy { it.name }
@@ -171,7 +185,12 @@ class AppManagerFragment : Fragment() {
             holder.ivIcon.setImageDrawable(app.icon)
             holder.tvName.text = app.name
             holder.tvPackage.text = app.packageName
-            holder.tvInfo.text = "${app.size / (1024*1024)} MB"
+            val minutes = app.usageTimeToday / 60000
+            if (minutes > 0) {
+                holder.tvInfo.text = "${app.size / (1024*1024)} MB | $minutes min"
+            } else {
+                holder.tvInfo.text = "${app.size / (1024*1024)} MB"
+            }
             holder.itemView.setOnClickListener { onClick(app) }
         }
         override fun getItemCount() = list.size

@@ -160,7 +160,7 @@ class HomeFragment : Fragment() {
             }
         }
 
-        fetchSystemStats()
+        fetchSystemStats(view)
 
         return view
     }
@@ -452,7 +452,7 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun fetchSystemStats() {
+    private fun fetchSystemStats(view: View) {
         val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
         
         // Battery
@@ -513,7 +513,7 @@ class HomeFragment : Fragment() {
                 val minsToday = (timeToday % 3600000) / 60000
                 tvPlaytimeToday.text = "Today: ${hoursToday}h ${minsToday}m"
 
-                val tvGameStatus = view!!.findViewById<TextView>(R.id.tv_game_status)
+                val tvGameStatus = view.findViewById<TextView>(R.id.tv_game_status)
                 if (isForeground) {
                     tvGameStatus.text = "Active"
                     tvGameStatus.setTextColor(android.graphics.Color.parseColor("#4CAF50")) // Green
