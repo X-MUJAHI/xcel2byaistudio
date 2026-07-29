@@ -159,6 +159,12 @@ class HomeFragment : Fragment() {
                 startActivity(launchIntent)
             }
         }
+        
+        view.findViewById<android.widget.ImageButton>(R.id.btn_refresh)?.setOnClickListener {
+            updateUIState()
+            fetchSystemStats(view)
+            Toast.makeText(context, "Refreshed", Toast.LENGTH_SHORT).show()
+        }
 
         fetchSystemStats(view)
 
@@ -196,6 +202,7 @@ class HomeFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         updateUIState()
+        view?.let { fetchSystemStats(it) }
         startTimerUpdate()
         pingHandler.post(pingRunnable)
     }
@@ -489,15 +496,26 @@ class HomeFragment : Fragment() {
                 var lastTime = todayStart
                 val event = android.app.usage.UsageEvents.Event()
                 var isForeground = false
+                var currentForegroundPkg: String? = null
+                
                 while (eventsToday.hasNextEvent()) {
                     eventsToday.getNextEvent(event)
+                    
+                    if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == 1) {
+                        currentForegroundPkg = event.packageName
+                    } else if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED || event.eventType == 2 || event.eventType == 23) {
+                        if (currentForegroundPkg == event.packageName) {
+                            currentForegroundPkg = null
+                        }
+                    }
+
                     if (event.packageName == "com.dts.freefiremax") {
                         if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == 1) { // 1 is MOVE_TO_FOREGROUND
                             if (!isForeground) {
                                 isForeground = true
                                 lastTime = event.timeStamp
                             }
-                        } else if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED || event.eventType == 2) { // 2 is MOVE_TO_BACKGROUND
+                        } else if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED || event.eventType == 2 || event.eventType == 23) { // 2 is MOVE_TO_BACKGROUND
                             if (isForeground) {
                                 isForeground = false
                                 timeToday += (event.timeStamp - lastTime)
@@ -505,6 +523,9 @@ class HomeFragment : Fragment() {
                         }
                     }
                 }
+                
+                val isActuallyForeground = (currentForegroundPkg == "com.dts.freefiremax")
+                
                 if (isForeground) {
                     timeToday += (todayEnd - lastTime)
                 }
@@ -514,7 +535,7 @@ class HomeFragment : Fragment() {
                 tvPlaytimeToday.text = "Today: ${hoursToday}h ${minsToday}m"
 
                 val tvGameStatus = view.findViewById<TextView>(R.id.tv_game_status)
-                if (isForeground) {
+                if (isActuallyForeground) {
                     tvGameStatus.text = "Active"
                     tvGameStatus.setTextColor(android.graphics.Color.parseColor("#4CAF50")) // Green
                 } else {
