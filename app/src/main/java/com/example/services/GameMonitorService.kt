@@ -39,8 +39,8 @@ class GameMonitorService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lastSeenForegroundTime = System.currentTimeMillis() // Reset grace period on every start request
         val notification = NotificationCompat.Builder(this, "monitor_channel")
-            .setContentTitle("Game Monitor Active")
-            .setContentText("Monitoring $TARGET_PKG")
+            .setContentTitle("xcel2 is working")
+            .setContentText("Hologram ability is active while you play")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .build()
         startForeground(2001, notification)
@@ -70,6 +70,7 @@ class GameMonitorService : Service() {
                         RenameUtil.turnOff()
                     }
                     isRunning = false
+                    stopForeground(true)
                     stopSelf()
                 } else {
                     handler.postDelayed(this, checkInterval)

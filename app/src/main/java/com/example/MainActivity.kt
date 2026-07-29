@@ -250,48 +250,47 @@ class MainActivity : AppCompatActivity() {
                 requestStoragePermission()
                 return
             }
-            val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-            FirebaseFirestore.getInstance().collection("users").document(savedKey).get().addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    val isActive = doc.getBoolean("isActive") ?: false
-                    var isKeyStillValid = isActive
-                    val expireTime = doc.getTimestamp("expireDate")?.toDate()?.time ?: Long.MAX_VALUE
-                    
-                    if (System.currentTimeMillis() > expireTime) {
-                        isKeyStillValid = false
-                    }
-
-                    val devices = doc.get("devices") as? MutableList<String> ?: mutableListOf()
-                    val maxDevices = doc.getLong("maxDevices")?.toInt() ?: 1
-                    
-                    if (!devices.contains(androidId)) {
-                        if (devices.size >= maxDevices) {
+            fetchPublicIp { publicIp ->
+                FirebaseFirestore.getInstance().collection("users").document(savedKey).get().addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        val isActive = doc.getBoolean("isActive") ?: false
+                        var isKeyStillValid = isActive
+                        val expireTime = doc.getTimestamp("expireDate")?.toDate()?.time ?: Long.MAX_VALUE
+                        
+                        if (System.currentTimeMillis() > expireTime) {
                             isKeyStillValid = false
                         }
-                    }
 
-                    if (isKeyStillValid) {
-                        keyReady = true
-                        val userType = doc.getString("role") ?: "NORMAL"
-                        prefs.edit().putString(KEY_USER_TYPE, userType).apply()
-                        requestStoragePermission()
+                        val devices = doc.get("devices") as? MutableList<String> ?: mutableListOf()
+                        val maxDevices = doc.getLong("maxDevices")?.toInt() ?: 1
+                        
+                        if (!checkDeviceLimit(devices, maxDevices, doc.reference, publicIp)) {
+                            isKeyStillValid = false
+                        }
+
+                        if (isKeyStillValid) {
+                            keyReady = true
+                            val userType = doc.getString("role") ?: "NORMAL"
+                            prefs.edit().putString(KEY_USER_TYPE, userType).apply()
+                            requestStoragePermission()
+                        } else {
+                            keyReady = false
+                            prefs.edit().remove(KEY_SAVED_KEY).remove(KEY_USER_TYPE).apply()
+                            executeExpirationTurnOff {}
+                            Toast.makeText(this@MainActivity, "Key expired, locked or device limit reached.", Toast.LENGTH_LONG).show()
+                            requestStoragePermission()
+                        }
                     } else {
                         keyReady = false
                         prefs.edit().remove(KEY_SAVED_KEY).remove(KEY_USER_TYPE).apply()
                         executeExpirationTurnOff {}
-                        Toast.makeText(this@MainActivity, "Key expired, locked or device limit reached.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, "Key invalid.", Toast.LENGTH_LONG).show()
                         requestStoragePermission()
                     }
-                } else {
-                    keyReady = false
-                    prefs.edit().remove(KEY_SAVED_KEY).remove(KEY_USER_TYPE).apply()
-                    executeExpirationTurnOff {}
-                    Toast.makeText(this@MainActivity, "Key invalid.", Toast.LENGTH_LONG).show()
+                }.addOnFailureListener {
+                    keyReady = true
                     requestStoragePermission()
                 }
-            }.addOnFailureListener {
-                keyReady = true
-                requestStoragePermission()
             }
         } else {
             requestStoragePermission()
@@ -299,6 +298,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (android.os.Environment.isExternalStorageManager()) {
                 permissionReady = true
@@ -496,45 +500,89 @@ class MainActivity : AppCompatActivity() {
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(android.graphics.Color.WHITE)
     }
 
+    private fun fetchPublicIp(callback: (String) -> Unit) {
+        Thread {
+            var ip = "Unknown"
+            try {
+                val url = java.net.URL("https://api.ipify.org")
+                val connection = url.openConnection()
+                connection.connectTimeout = 3000
+                connection.readTimeout = 3000
+                val scanner = java.util.Scanner(connection.getInputStream(), "UTF-8").useDelimiter("\\A")
+                if (scanner.hasNext()) {
+                    ip = scanner.next()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            runOnUiThread { callback(ip) }
+        }.start()
+    }
+
+    private fun checkDeviceLimit(
+        devices: MutableList<String>,
+        maxDevices: Int,
+        docRef: com.google.firebase.firestore.DocumentReference,
+        publicIp: String
+    ): Boolean {
+        val currentModel = android.os.Build.MODEL
+        val currentComposite = "$currentModel|$publicIp"
+        
+        for (dev in devices) {
+            if (dev == currentComposite) return true
+            val parts = dev.split("\\|")
+            if (parts.size == 2 && (parts[0] == currentModel || parts[1] == publicIp)) {
+                devices.remove(dev)
+                devices.add(currentComposite)
+                docRef.update("devices", devices)
+                return true
+            }
+        }
+        
+        if (devices.size < maxDevices) {
+            devices.add(currentComposite)
+            docRef.update("devices", devices)
+            return true
+        }
+        return false
+    }
+
     private fun validateKeyDynamically(keyInput: String, onSuccess: (String) -> Unit, onFail: (String) -> Unit) {
         if (keyInput == "mujahi@admin") {
             onSuccess("ADMIN")
             return
         }
-        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-        FirebaseFirestore.getInstance().collection("users").document(keyInput).get().addOnSuccessListener { doc ->
-            if (doc.exists()) {
-                val isActive = doc.getBoolean("isActive") ?: false
-                if (!isActive) {
-                    onFail("This key is no longer active.")
-                    return@addOnSuccessListener
-                }
+        fetchPublicIp { publicIp ->
+            FirebaseFirestore.getInstance().collection("users").document(keyInput).get().addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val isActive = doc.getBoolean("isActive") ?: false
+                    if (!isActive) {
+                        onFail("This key is no longer active.")
+                        return@addOnSuccessListener
+                    }
 
-                val expireTime = doc.getTimestamp("expireDate")?.toDate()?.time ?: Long.MAX_VALUE
-                if (System.currentTimeMillis() > expireTime) {
-                    onFail("This key has expired.")
-                    return@addOnSuccessListener
-                }
+                    val expireTime = doc.getTimestamp("expireDate")?.toDate()?.time ?: Long.MAX_VALUE
+                    if (System.currentTimeMillis() > expireTime) {
+                        onFail("This key has expired.")
+                        return@addOnSuccessListener
+                    }
 
-                val devices = doc.get("devices") as? MutableList<String> ?: mutableListOf()
-                val maxDevices = doc.getLong("maxDevices")?.toInt() ?: 1
-                
-                if (!devices.contains(androidId)) {
-                    if (devices.size >= maxDevices) {
+                    val devices = doc.get("devices") as? MutableList<String> ?: mutableListOf()
+                    val maxDevices = doc.getLong("maxDevices")?.toInt() ?: 1
+                    
+                    if (!checkDeviceLimit(devices, maxDevices, doc.reference, publicIp)) {
                         onFail("Device limit reached for this key.")
                         return@addOnSuccessListener
                     }
-                    devices.add(androidId)
-                    doc.reference.update("devices", devices)
-                }
 
-                val userType = doc.getString("role") ?: "NORMAL"
-                onSuccess(userType)
-            } else {
-                onFail("Invalid key!")
+                    val userType = doc.getString("role") ?: "NORMAL"
+                    onSuccess(userType)
+                } else {
+                    onFail("Invalid key!")
+                }
+            }.addOnFailureListener {
+                onFail("Error checking key. Try again later.")
             }
-        }.addOnFailureListener {
-            onFail("Error checking key. Try again later.")
         }
     }
 
@@ -596,10 +644,26 @@ class MainActivity : AppCompatActivity() {
     private fun checkMissedAutoOff() {
         val userType = prefs.getString(KEY_USER_TYPE, null) ?: return
         if (userType == "ADMIN") return
-        val autoOffTime = prefs.getLong(KEY_AUTO_OFF_TIME, 0L)
-        if (autoOffTime > 0 && System.currentTimeMillis() >= autoOffTime) {
+        
+        // Ensure mod is OFF if GameMonitorService is not running
+        if (!isServiceRunning(com.example.services.GameMonitorService::class.java)) {
             executeTurnOffGlobal()
+        } else {
+            val autoOffTime = prefs.getLong(KEY_AUTO_OFF_TIME, 0L)
+            if (autoOffTime > 0 && System.currentTimeMillis() >= autoOffTime) {
+                executeTurnOffGlobal()
+            }
         }
+    }
+
+    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun executeExpirationTurnOff(onComplete: () -> Unit) {
