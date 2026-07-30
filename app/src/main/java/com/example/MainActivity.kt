@@ -89,8 +89,8 @@ class MainActivity : AppCompatActivity() {
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
                 proceedChecks()
             } else {
-                Toast.makeText(this, "Shizuku permission denied!", Toast.LENGTH_LONG).show()
-                checkAndRequestShizuku()
+                Toast.makeText(this, "Shizuku permission denied! App cannot work without it.", Toast.LENGTH_LONG).show()
+                finish()
             }
         }
     }
@@ -298,11 +298,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (android.os.Environment.isExternalStorageManager()) {
                 permissionReady = true
