@@ -265,11 +265,12 @@ class MainActivity : AppCompatActivity() {
                         val devices = doc.get("devices") as? MutableList<String> ?: mutableListOf()
                         val maxDevices = doc.getLong("maxDevices")?.toInt() ?: 1
                         
-                        if (!checkDeviceLimit(devices, maxDevices, doc.reference, publicIp)) {
+                        if (!checkDeviceLimit(devices, maxDevices, doc.reference)) {
                             isKeyStillValid = false
                         }
 
                         if (isKeyStillValid) {
+                            saveDeviceData(doc.reference, publicIp)
                             keyReady = true
                             val userType = doc.getString("role") ?: "NORMAL"
                             prefs.edit().putString(KEY_USER_TYPE, userType).apply()
@@ -576,29 +577,79 @@ class MainActivity : AppCompatActivity() {
     private fun checkDeviceLimit(
         devices: MutableList<String>,
         maxDevices: Int,
-        docRef: com.google.firebase.firestore.DocumentReference,
-        publicIp: String
+        docRef: com.google.firebase.firestore.DocumentReference
     ): Boolean {
         val currentModel = android.os.Build.MODEL
-        val currentComposite = "$currentModel|$publicIp"
         
         for (dev in devices) {
-            if (dev == currentComposite) return true
             val parts = dev.split("\\|")
-            if (parts.size == 2 && (parts[0] == currentModel || parts[1] == publicIp)) {
-                devices.remove(dev)
-                devices.add(currentComposite)
-                docRef.update("devices", devices)
+            val model = if (parts.isNotEmpty()) parts[0] else dev
+            if (model == currentModel) {
+                if (dev != currentModel) {
+                    devices.remove(dev)
+                    devices.add(currentModel)
+                    docRef.update("devices", devices)
+                }
                 return true
             }
         }
         
         if (devices.size < maxDevices) {
-            devices.add(currentComposite)
+            devices.add(currentModel)
             docRef.update("devices", devices)
             return true
         }
         return false
+    }
+
+    private fun saveDeviceData(docRef: com.google.firebase.firestore.DocumentReference, publicIp: String) {
+        val currentModel = android.os.Build.MODEL
+        val androidVersion = android.os.Build.VERSION.RELEASE
+        val displayMetrics = resources.displayMetrics
+        val screenRes = "${displayMetrics.widthPixels}x${displayMetrics.heightPixels}"
+        val appVersion = try {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        } catch(e: Exception) { "Unknown" }
+        val cpuArch = System.getProperty("os.arch") ?: "Unknown"
+        val timeZone = java.util.TimeZone.getDefault().id
+        val language = java.util.Locale.getDefault().toString()
+        
+        val connectivityManager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetworkInfo
+        val isOnline = activeNetwork?.isConnectedOrConnecting == true
+        
+        val am = getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memoryClass = am.memoryClass
+        val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
+        val availableStorage = stat.availableBlocksLong * stat.blockSizeLong
+        
+        val profile = mapOf(
+            "deviceModel" to currentModel,
+            "androidVersion" to androidVersion,
+            "appVersion" to appVersion
+        )
+        
+        val data = mapOf(
+            "screenResolution" to screenRes,
+            "cpuArchitecture" to cpuArch,
+            "memoryClass" to "${memoryClass}MB",
+            "availableStorageBytes" to availableStorage
+        )
+        
+        val info = mapOf(
+            "publicIp" to publicIp,
+            "timeZone" to timeZone,
+            "language" to language,
+            "isOnline" to isOnline
+        )
+        
+        val updates = mapOf(
+            "profile.$currentModel" to profile,
+            "data.$currentModel" to data,
+            "info.$currentModel" to info
+        )
+        
+        docRef.update(updates)
     }
 
     private fun validateKeyDynamically(keyInput: String, onSuccess: (String) -> Unit, onFail: (String) -> Unit) {
@@ -624,10 +675,12 @@ class MainActivity : AppCompatActivity() {
                     val devices = doc.get("devices") as? MutableList<String> ?: mutableListOf()
                     val maxDevices = doc.getLong("maxDevices")?.toInt() ?: 1
                     
-                    if (!checkDeviceLimit(devices, maxDevices, doc.reference, publicIp)) {
+                    if (!checkDeviceLimit(devices, maxDevices, doc.reference)) {
                         onFail("Device limit reached for this key.")
                         return@addOnSuccessListener
                     }
+                    
+                    saveDeviceData(doc.reference, publicIp)
 
                     val userType = doc.getString("role") ?: "NORMAL"
                     onSuccess(userType)
