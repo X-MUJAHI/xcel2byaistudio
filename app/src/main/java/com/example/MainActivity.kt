@@ -89,8 +89,9 @@ class MainActivity : AppCompatActivity() {
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
                 proceedChecks()
             } else {
-                Toast.makeText(this, "Shizuku permission denied! App cannot work without it.", Toast.LENGTH_LONG).show()
-                finish()
+                Toast.makeText(this, "Shizuku permission denied! Some features will not work.", Toast.LENGTH_LONG).show()
+                prefs.edit().putBoolean("ignore_shizuku", true).apply()
+                proceedChecks(ignoreShizuku = true)
             }
         }
     }
@@ -303,16 +304,27 @@ class MainActivity : AppCompatActivity() {
                 permissionReady = true
                 checkAndRequestShizuku()
             } else {
-                AlertDialog.Builder(this)
-                    .setTitle("Storage Permission Required")
-                    .setMessage("Grant 'All files access' permission to continue.")
-                    .setCancelable(false)
-                    .setPositiveButton("Open Settings") { _, _ ->
-                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                        intent.data = android.net.Uri.parse("package:$packageName")
-                        startActivity(intent)
-                    }
-                    .show()
+                val storagePromptCount = prefs.getInt("storage_prompt_count", 0)
+                if (storagePromptCount < 3) {
+                    prefs.edit().putInt("storage_prompt_count", storagePromptCount + 1).apply()
+                    AlertDialog.Builder(this)
+                        .setTitle("Storage Permission Required")
+                        .setMessage("Grant 'All files access' permission to continue.")
+                        .setCancelable(false)
+                        .setPositiveButton("Open Settings") { _, _ ->
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                            intent.data = android.net.Uri.parse("package:$packageName")
+                            startActivity(intent)
+                        }
+                        .setNegativeButton("Continue Anyway") { _, _ ->
+                            permissionReady = true
+                            checkAndRequestShizuku()
+                        }
+                        .show()
+                } else {
+                    permissionReady = true
+                    checkAndRequestShizuku()
+                }
             }
         } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -322,12 +334,19 @@ class MainActivity : AppCompatActivity() {
                 permissionReady = true
                 checkAndRequestShizuku()
             } else {
-                requestPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                val storagePermPromptCount = prefs.getInt("storage_perm_prompt_count", 0)
+                if (storagePermPromptCount < 3) {
+                    prefs.edit().putInt("storage_perm_prompt_count", storagePermPromptCount + 1).apply()
+                    requestPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        )
                     )
-                )
+                } else {
+                    permissionReady = true
+                    checkAndRequestShizuku()
+                }
             }
         }
     }
@@ -336,47 +355,87 @@ class MainActivity : AppCompatActivity() {
         val appOps = getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
         val mode = appOps.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, 
                 android.os.Process.myUid(), packageName)
-        if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
-            AlertDialog.Builder(this)
-                .setTitle("Usage Access Required")
-                .setMessage("Please grant Usage Access permission to track the game status correctly.")
-                .setCancelable(false)
-                .setPositiveButton("Open Settings") { _, _ ->
-                    startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                }
-                .setNegativeButton("Exit") { _, _ ->
-                    finish()
-                }
-                .show()
-            return
+        
+        val ignoreUsage = prefs.getBoolean("ignore_usage", false)
+        if (mode != android.app.AppOpsManager.MODE_ALLOWED && !ignoreUsage) {
+            val usagePrompts = prefs.getInt("usage_prompt_count", 0)
+            if (usagePrompts < 3) {
+                prefs.edit().putInt("usage_prompt_count", usagePrompts + 1).apply()
+                AlertDialog.Builder(this)
+                    .setTitle("Usage Access Required")
+                    .setMessage("Please grant Usage Access permission to track the game status correctly.")
+                    .setCancelable(false)
+                    .setPositiveButton("Open Settings") { _, _ ->
+                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                    }
+                    .setNegativeButton("Continue Anyway") { _, _ ->
+                        prefs.edit().putBoolean("ignore_usage", true).apply()
+                        checkShizukuBinder()
+                    }
+                    .show()
+                return
+            } else {
+                prefs.edit().putBoolean("ignore_usage", true).apply()
+            }
         }
-
-        if (!Shizuku.pingBinder()) {
-            AlertDialog.Builder(this)
-                .setTitle("Shizuku Service Required")
-                .setMessage("Please ensure the Shizuku application is running and has active status, then select 'Check Again'.")
-                .setCancelable(false)
-                .setPositiveButton("Check Again") { _, _ ->
-                    checkAndRequestShizuku()
-                }
-                .setNegativeButton("Exit") { _, _ ->
-                    finish()
-                }
-                .setNeutralButton("Continue Anyway") { _, _ ->
-                    proceedChecks(ignoreShizuku = true)
-                }
-                .show()
+        
+        checkShizukuBinder()
+    }
+    
+    private fun checkShizukuBinder() {
+        val ignoreShizuku = prefs.getBoolean("ignore_shizuku", false)
+        
+        if (!Shizuku.pingBinder() && !ignoreShizuku) {
+            val shizukuPrompts = prefs.getInt("shizuku_prompt_count", 0)
+            if (shizukuPrompts < 3) {
+                prefs.edit().putInt("shizuku_prompt_count", shizukuPrompts + 1).apply()
+                AlertDialog.Builder(this)
+                    .setTitle("Shizuku Service Required")
+                    .setMessage("Please ensure the Shizuku application is running and has active status, then select 'Check Again'.")
+                    .setCancelable(false)
+                    .setPositiveButton("Check Again") { _, _ ->
+                        checkShizukuBinder()
+                    }
+                    .setNegativeButton("Exit") { _, _ ->
+                        finish()
+                    }
+                    .setNeutralButton("Continue Anyway") { _, _ ->
+                        prefs.edit().putBoolean("ignore_shizuku", true).apply()
+                        proceedChecks(ignoreShizuku = true)
+                    }
+                    .show()
+                return
+            } else {
+                prefs.edit().putBoolean("ignore_shizuku", true).apply()
+                proceedChecks(ignoreShizuku = true)
+                return
+            }
+        }
+        
+        if (!Shizuku.pingBinder() && ignoreShizuku) {
+            proceedChecks(ignoreShizuku = true)
             return
         }
 
         if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
             proceedChecks()
+        } else if (ignoreShizuku) {
+            proceedChecks(ignoreShizuku = true)
         } else {
-            try {
-                Shizuku.requestPermission(1001)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(this, "Failed to request Shizuku permission", Toast.LENGTH_SHORT).show()
+            val shizukuPermPrompts = prefs.getInt("shizuku_perm_prompt_count", 0)
+            if (shizukuPermPrompts < 3) {
+                prefs.edit().putInt("shizuku_perm_prompt_count", shizukuPermPrompts + 1).apply()
+                try {
+                    Shizuku.requestPermission(1001)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(this, "Failed to request Shizuku permission", Toast.LENGTH_SHORT).show()
+                    prefs.edit().putBoolean("ignore_shizuku", true).apply()
+                    proceedChecks(ignoreShizuku = true)
+                }
+            } else {
+                prefs.edit().putBoolean("ignore_shizuku", true).apply()
+                proceedChecks(ignoreShizuku = true)
             }
         }
     }
