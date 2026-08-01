@@ -88,10 +88,6 @@ class GameMonitorService : Service() {
             events.getNextEvent(ev)
             if (ev.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                 currentForegroundPkg = ev.packageName
-            } else if (ev.eventType == UsageEvents.Event.ACTIVITY_PAUSED || ev.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
-                if (currentForegroundPkg == ev.packageName) {
-                    currentForegroundPkg = null
-                }
             }
         }
         lastQueryTime = time
