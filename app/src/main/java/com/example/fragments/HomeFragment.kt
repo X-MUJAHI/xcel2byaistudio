@@ -343,29 +343,10 @@ class HomeFragment : Fragment() {
                 #!/system/bin/sh
                 ZIP_FILE="/storage/emulated/0/Download/xcel1.zip"
                 DEST_DIR="/storage/emulated/0/Android/data"
-                BASE_DIR="/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-                G_DIR="${'$'}BASE_DIR/gameassetbundles"
-                G_DATA="${'$'}BASE_DIR/gameassetbundles-data"
-                FILEINFO="${'$'}BASE_DIR/fileinfo"
-                FILEINFO_DATA="${'$'}BASE_DIR/fileinfo-data"
                 
                 if [ ! -f "${'$'}ZIP_FILE" ]; then
                     echo "STATUS:Error: Zip file not found in Download folder" >&2
                     exit 1
-                fi
-                
-                echo "STATUS:Copying gameassetbundles backup..."
-                if [ ! -d "${'$'}G_DATA" ]; then
-                    if ! cp -pr "${'$'}G_DIR" "${'$'}G_DATA"; then
-                        cp -r "${'$'}G_DIR" "${'$'}G_DATA"
-                    fi
-                fi
-
-                echo "STATUS:Copying fileinfo backup..."
-                if [ ! -f "${'$'}FILEINFO_DATA" ]; then
-                    if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"; then
-                        cp "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"
-                    fi
                 fi
                 
                 echo "STATUS:Extracting xcel1.zip (Takes 5-10 mins)..."
@@ -405,14 +386,6 @@ class HomeFragment : Fragment() {
                     if (success) {
                         Toast.makeText(ctx, "Activation successful!", Toast.LENGTH_SHORT).show()
                         updateUIState()
-                        val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
-                        val userType = prefs.getString(MainActivity.KEY_USER_TYPE, null)
-                        if (userType == "NORMAL") {
-                            Toast.makeText(ctx, "Will automatically turn off in 5 seconds...", Toast.LENGTH_SHORT).show()
-                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                handleTurnOff()
-                            }, 5000)
-                        }
                     } else {
                         Toast.makeText(ctx, "Error during activation.", Toast.LENGTH_LONG).show()
                         btnActivate.isEnabled = true
