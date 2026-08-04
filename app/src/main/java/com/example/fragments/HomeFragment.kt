@@ -17,6 +17,9 @@ import com.example.MainActivity
 import com.example.R
 import com.example.utils.RenameUtil
 import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import androidx.activity.result.contract.ActivityResultContracts
 
 class HomeFragment : Fragment() {
 
@@ -38,6 +41,12 @@ class HomeFragment : Fragment() {
     private var isActivationMode = false
     private var countDownTimer: CountDownTimer? = null
     private val timerUpdateInterval = 1000L
+
+    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            startFirstTimeActivation(uri)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -101,7 +110,13 @@ class HomeFragment : Fragment() {
                 .show()
         }
 
-        btnActivate.setOnClickListener { startFirstTimeActivation() }
+        btnActivate.setOnClickListener { 
+            if (!RenameUtil.shizukuAvailable()) {
+                Toast.makeText(context, "Please configure/authorize Shizuku first!", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            filePickerLauncher.launch("application/zip")
+        }
         
         btnTogglePower.setOnClickListener {
             if (isOn) {
@@ -309,55 +324,74 @@ class HomeFragment : Fragment() {
         tvTimer.text = "Timer: Unlimited"
     }
 
-    private fun startFirstTimeActivation() {
-        if (!RenameUtil.shizukuAvailable()) {
-            Toast.makeText(context, "Please configure/authorize Shizuku first!", Toast.LENGTH_LONG).show()
-            return
-        }
+    private fun startFirstTimeActivation(uri: android.net.Uri) {
         val ctx = context ?: return
         
         progressBar.visibility = View.VISIBLE
         progressBar.isIndeterminate = true
         tvProgress.visibility = View.VISIBLE
-        tvProgress.text = "Starting Setup..."
+        tvProgress.text = "Copying file..."
         btnActivate.isEnabled = false
 
-        val notificationManager = ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel("extract_channel", "Extraction Progress", android.app.NotificationManager.IMPORTANCE_LOW)
-            notificationManager.createNotificationChannel(channel)
-        }
-        
-        val builder = androidx.core.app.NotificationCompat.Builder(ctx, "extract_channel")
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Extracting Data")
-            .setContentText("Please wait while game data is being generated...")
-            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .setProgress(0, 0, true)
+        Thread {
+            try {
+                val tempFile = File(ctx.cacheDir, "xcel1.zip")
+                ctx.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
 
-        notificationManager.notify(1005, builder.build())
+                requireActivity().runOnUiThread {
+                    tvProgress.text = "Starting Setup..."
+                    val notificationManager = ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        val channel = android.app.NotificationChannel("extract_channel", "Extraction Progress", android.app.NotificationManager.IMPORTANCE_LOW)
+                        notificationManager.createNotificationChannel(channel)
+                    }
+                    
+                    val builder = androidx.core.app.NotificationCompat.Builder(ctx, "extract_channel")
+                        .setSmallIcon(android.R.drawable.stat_sys_download)
+                        .setContentTitle("Extracting Data")
+                        .setContentText("Please wait while game data is being generated...")
+                        .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+                        .setOngoing(true)
+                        .setProgress(0, 0, true)
 
-        RenameUtil.executeShizukuScriptAsync(
-            script = """
-                #!/system/bin/sh
-                ZIP_FILE="/storage/emulated/0/Download/xcel1.zip"
-                DEST_DIR="/storage/emulated/0/Android/data"
-                
-                if [ ! -f "${'$'}ZIP_FILE" ]; then
-                    echo "STATUS:Error: Zip file not found in Download folder" >&2
-                    exit 1
-                fi
-                
-                echo "STATUS:Extracting xcel1.zip (Takes 5-10 mins)..."
-                if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
-                    mv "${'$'}ZIP_FILE" "/storage/emulated/0/Download/xcel1-used-delete-it.zip"
-                    echo "STATUS:Done!"
-                else
-                    echo "STATUS:Error: Unzip failed"
-                    exit 1
-                fi
-            """.trimIndent(),
+                    notificationManager.notify(1005, builder.build())
+                }
+
+                val notificationManager = ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                val builder = androidx.core.app.NotificationCompat.Builder(ctx, "extract_channel")
+                        .setSmallIcon(android.R.drawable.stat_sys_download)
+                        .setContentTitle("Extracting Data")
+                        .setContentText("Please wait while game data is being generated...")
+                        .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+                        .setOngoing(true)
+                        .setProgress(0, 0, true)
+
+                RenameUtil.executeShizukuScriptAsync(
+                        script = """
+                            #!/system/bin/sh
+                            mkdir -p /storage/emulated/0/xcel-panel
+                            cp "${tempFile.absolutePath}" "/storage/emulated/0/xcel-panel/xcel1.zip"
+                            ZIP_FILE="/storage/emulated/0/xcel-panel/xcel1.zip"
+                            DEST_DIR="/storage/emulated/0/Android/data"
+                            
+                            if [ ! -f "${'$'}ZIP_FILE" ]; then
+                                echo "STATUS:Error: Zip file not found in xcel-panel folder" >&2
+                                exit 1
+                            fi
+                            
+                            echo "STATUS:Extracting xcel1.zip (Takes 5-10 mins)..."
+                            if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
+                                rm "${tempFile.absolutePath}"
+                                echo "STATUS:Done!"
+                            else
+                                echo "STATUS:Error: Unzip failed"
+                                exit 1
+                            fi
+                        """.trimIndent(),
             onProgress = { line ->
                 requireActivity().runOnUiThread {
                     if (line.startsWith("STATUS:")) {
@@ -394,6 +428,16 @@ class HomeFragment : Fragment() {
                 }
             }
         )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                requireActivity().runOnUiThread {
+                    Toast.makeText(ctx, "Failed to copy file.", Toast.LENGTH_SHORT).show()
+                    progressBar.visibility = View.GONE
+                    tvProgress.visibility = View.GONE
+                    btnActivate.isEnabled = true
+                }
+            }
+        }.start()
     }
 
     private fun handleTurnOn() {

@@ -21,5 +21,9 @@
             android:id="@+id/nav_device"
             android:icon="@android:drawable/ic_menu_preferences"
             android:title="Device" />
+        <item
+            android:id="@+id/nav_video_compressor"
+            android:icon="@android:drawable/ic_menu_gallery"
+            android:title="Video Compressor" />
     </group>
 </menu>
