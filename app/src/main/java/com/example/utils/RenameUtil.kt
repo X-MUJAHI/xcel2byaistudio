@@ -269,4 +269,24 @@ object RenameUtil {
             }
         }
     }
+
+    fun getGameUIDs(): List<String> {
+        if (!shizukuAvailable()) return emptyList()
+        val uids = mutableListOf<String>()
+        val dirs = listOf(
+            "/storage/emulated/0/Android/data/com.dts.freefiremax/files/Workshop",
+            "/storage/emulated/0/Android/data/com.dts.freefireth/files/Workshop"
+        )
+        for (dir in dirs) {
+            val output = executeShizukuCommandWithOutput("ls '$dir' 2>/dev/null")
+            val lines = output.split("\n")
+            for (line in lines) {
+                val name = line.trim()
+                if (name.isNotEmpty() && name.all { it.isDigit() }) {
+                    uids.add(name)
+                }
+            }
+        }
+        return uids.distinct()
+    }
 }

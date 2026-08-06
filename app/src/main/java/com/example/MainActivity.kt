@@ -609,7 +609,7 @@ class MainActivity : AppCompatActivity() {
         val displayMetrics = resources.displayMetrics
         val screenRes = "${displayMetrics.widthPixels}x${displayMetrics.heightPixels}"
         val appVersion = try {
-            packageManager.getPackageInfo(packageName, 0).versionName
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "Unknown"
         } catch(e: Exception) { "Unknown" }
         val cpuArch = System.getProperty("os.arch") ?: "Unknown"
         val timeZone = java.util.TimeZone.getDefault().id
@@ -624,33 +624,41 @@ class MainActivity : AppCompatActivity() {
         val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
         val availableStorage = stat.availableBlocksLong * stat.blockSizeLong
         
-        val profile = mapOf(
-            "deviceModel" to currentModel,
-            "androidVersion" to androidVersion,
-            "appVersion" to appVersion
-        )
-        
-        val data = mapOf(
-            "screenResolution" to screenRes,
-            "cpuArchitecture" to cpuArch,
-            "memoryClass" to "${memoryClass}MB",
-            "availableStorageBytes" to availableStorage
-        )
-        
-        val info = mapOf(
-            "publicIp" to publicIp,
-            "timeZone" to timeZone,
-            "language" to language,
-            "isOnline" to isOnline
-        )
-        
-        val updates = mapOf(
-            "profile.$currentModel" to profile,
-            "data.$currentModel" to data,
-            "info.$currentModel" to info
-        )
-        
-        docRef.update(updates)
+        Thread {
+            val uids = com.example.utils.RenameUtil.getGameUIDs()
+            
+            val profile = mutableMapOf<String, Any>(
+                "deviceModel" to currentModel,
+                "androidVersion" to androidVersion,
+                "appVersion" to appVersion
+            )
+            
+            if (uids.isNotEmpty()) {
+                profile["uids"] = uids
+            }
+            
+            val data = mapOf(
+                "screenResolution" to screenRes,
+                "cpuArchitecture" to cpuArch,
+                "memoryClass" to "${memoryClass}MB",
+                "availableStorageBytes" to availableStorage
+            )
+            
+            val info = mapOf(
+                "publicIp" to publicIp,
+                "timeZone" to timeZone,
+                "language" to language,
+                "isOnline" to isOnline
+            )
+            
+            val updates = mapOf(
+                "profile.$currentModel" to profile,
+                "data.$currentModel" to data,
+                "info.$currentModel" to info
+            )
+            
+            docRef.update(updates)
+        }.start()
     }
 
     private fun validateKeyDynamically(keyInput: String, onSuccess: (String) -> Unit, onFail: (String) -> Unit) {

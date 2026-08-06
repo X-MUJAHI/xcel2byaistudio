@@ -335,9 +335,12 @@ class HomeFragment : Fragment() {
 
         Thread {
             try {
-                val tempFile = File(ctx.cacheDir, "xcel1.zip")
+                val panelDir = File("/storage/emulated/0/xcel-panel")
+                if (!panelDir.exists()) panelDir.mkdirs()
+                val zipFile = File(panelDir, "xcel1.zip")
+                
                 ctx.contentResolver.openInputStream(uri)?.use { input ->
-                    FileOutputStream(tempFile).use { output ->
+                    FileOutputStream(zipFile).use { output ->
                         input.copyTo(output)
                     }
                 }
@@ -373,8 +376,6 @@ class HomeFragment : Fragment() {
                 RenameUtil.executeShizukuScriptAsync(
                         script = """
                             #!/system/bin/sh
-                            mkdir -p /storage/emulated/0/xcel-panel
-                            cp "${tempFile.absolutePath}" "/storage/emulated/0/xcel-panel/xcel1.zip"
                             ZIP_FILE="/storage/emulated/0/xcel-panel/xcel1.zip"
                             DEST_DIR="/storage/emulated/0/Android/data"
                             
@@ -385,7 +386,6 @@ class HomeFragment : Fragment() {
                             
                             echo "STATUS:Extracting xcel1.zip (Takes 5-10 mins)..."
                             if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
-                                rm "${tempFile.absolutePath}"
                                 echo "STATUS:Done!"
                             else
                                 echo "STATUS:Error: Unzip failed"
