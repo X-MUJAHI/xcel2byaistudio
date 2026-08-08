@@ -151,8 +151,11 @@ class SettingsFragment : Fragment() {
 
         view.findViewById<Button>(R.id.btn_saf_perm).setOnClickListener {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            val uri = Uri.parse("content://com.android.externalstorage.documents/document/primary%3AAndroid%2Fdata")
-            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
+            val uri = android.provider.DocumentsContract.buildDocumentUri(
+                "com.android.externalstorage.documents", 
+                "primary:Android"
+            )
+            intent.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, uri)
             startActivityForResult(intent, 2001)
         }
 
