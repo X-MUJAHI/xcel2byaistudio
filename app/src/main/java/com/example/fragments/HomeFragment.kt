@@ -147,29 +147,7 @@ class HomeFragment : Fragment() {
                     return@setOnClickListener
                 }
                 
-                val progressDialog = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
-                    .setTitle("Opening Game")
-                    .setMessage("Turning ON mod and launching...")
-                    .setCancelable(false)
-                    .create()
-                progressDialog.show()
-                
-                val activity = requireActivity() as MainActivity
-                activity.executeTurnOnGlobal {
-                    progressDialog.dismiss()
-                    updateUIState()
-                    Toast.makeText(context, "Mod turned on! Launching game...", Toast.LENGTH_SHORT).show()
-                    
-                    // Start GameMonitorService
-                    val serviceIntent = Intent(requireContext(), com.example.services.GameMonitorService::class.java)
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        requireContext().startForegroundService(serviceIntent)
-                    } else {
-                        requireContext().startService(serviceIntent)
-                    }
-                    
-                    startActivity(launchIntent)
-                }
+                showUidSelectionDialog(launchIntent)
             } else {
                 startActivity(launchIntent)
             }
@@ -228,6 +206,85 @@ class HomeFragment : Fragment() {
         statusAnimator?.cancel()
         glowAnimator?.cancel()
         pingHandler.removeCallbacks(pingRunnable)
+    }
+    
+    private fun showUidSelectionDialog(launchIntent: Intent) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_uid_selection, null)
+        
+        val dialog = android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_Translucent_NoTitleBar)
+            .setView(dialogView)
+            .create()
+            
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        
+        val listView = dialogView.findViewById<android.widget.ListView>(R.id.list_uids)
+        val progressBar = dialogView.findViewById<ProgressBar>(R.id.progress_loading_uids)
+        val tvNoUids = dialogView.findViewById<TextView>(R.id.tv_no_uids)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btn_cancel_dialog)
+        
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        progressBar.visibility = View.VISIBLE
+        listView.visibility = View.GONE
+        tvNoUids.visibility = View.GONE
+        
+        dialog.show()
+        
+        Thread {
+            val uids = RenameUtil.getGameUIDs()
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                if (uids.isEmpty()) {
+                    tvNoUids.visibility = View.VISIBLE
+                } else {
+                    listView.visibility = View.VISIBLE
+                    val adapter = android.widget.ArrayAdapter(requireContext(), R.layout.item_uid, android.R.id.text1, uids)
+                    listView.adapter = adapter
+                    
+                    listView.setOnItemClickListener { _, _, _, _ ->
+                        dialog.dismiss()
+                        executeGameLaunchSequence(launchIntent)
+                    }
+                }
+            }
+        }.start()
+    }
+    
+    private fun executeGameLaunchSequence(launchIntent: Intent) {
+        val startTime = System.currentTimeMillis()
+        
+        val progressDialog = android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
+            .setTitle("Anti-Ban Active")
+            .setMessage("Applying protections and launching game...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+        
+        val activity = requireActivity() as MainActivity
+        activity.executeTurnOnGlobal {
+            updateUIState()
+            
+            // Calculate remaining time to wait (min 3 seconds total)
+            val elapsed = System.currentTimeMillis() - startTime
+            val remainingWait = Math.max(0L, 3000L - elapsed)
+            
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                progressDialog.dismiss()
+                Toast.makeText(context, "Anti-Ban applied! Launching...", Toast.LENGTH_SHORT).show()
+                
+                // Start GameMonitorService
+                val serviceIntent = Intent(requireContext(), com.example.services.GameMonitorService::class.java)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    requireContext().startForegroundService(serviceIntent)
+                } else {
+                    requireContext().startService(serviceIntent)
+                }
+                
+                startActivity(launchIntent)
+            }, remainingWait)
+        }
     }
 
     private var statusAnimator: android.animation.ObjectAnimator? = null
