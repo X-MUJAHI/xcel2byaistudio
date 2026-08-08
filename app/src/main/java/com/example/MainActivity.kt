@@ -109,6 +109,7 @@ class MainActivity : AppCompatActivity() {
         ivSettings = findViewById(R.id.iv_settings)
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        com.example.utils.RenameUtil.useShizukuOps = prefs.getBoolean("shizuku_ops_on", true)
 
         btnHome.setOnClickListener {
             if (!lockToUpdate) switchFragment(HomeFragment())
@@ -157,7 +158,6 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_execute_commands -> switchFragment(com.example.fragments.ShellTerminalFragment())
                 R.id.nav_wifi -> switchFragment(com.example.fragments.WifiManagerFragment())
                 R.id.nav_device -> switchFragment(com.example.fragments.DeviceManagerFragment())
-                R.id.nav_video_compressor -> switchFragment(com.example.fragments.VideoCompressorFragment())
             }
             drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
             true
@@ -385,44 +385,14 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun checkShizukuBinder() {
-        val ignoreShizuku = prefs.getBoolean("ignore_shizuku", false)
-        
-        if (!Shizuku.pingBinder() && !ignoreShizuku) {
-            val shizukuPrompts = prefs.getInt("shizuku_prompt_count", 0)
-            if (shizukuPrompts < 3) {
-                prefs.edit().putInt("shizuku_prompt_count", shizukuPrompts + 1).apply()
-                AlertDialog.Builder(this)
-                    .setTitle("Shizuku Service Required")
-                    .setMessage("Please ensure the Shizuku application is running and has active status, then select 'Check Again'.")
-                    .setCancelable(false)
-                    .setPositiveButton("Check Again") { _, _ ->
-                        checkShizukuBinder()
-                    }
-                    .setNegativeButton("Exit") { _, _ ->
-                        finish()
-                    }
-                    .setNeutralButton("Continue Anyway") { _, _ ->
-                        prefs.edit().putBoolean("ignore_shizuku", true).apply()
-                        proceedChecks(ignoreShizuku = true)
-                    }
-                    .show()
-                return
-            } else {
-                prefs.edit().putBoolean("ignore_shizuku", true).apply()
-                proceedChecks(ignoreShizuku = true)
-                return
-            }
-        }
-        
-        if (!Shizuku.pingBinder() && ignoreShizuku) {
+        if (!Shizuku.pingBinder()) {
+            prefs.edit().putBoolean("ignore_shizuku", true).apply()
             proceedChecks(ignoreShizuku = true)
             return
         }
 
         if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
             proceedChecks()
-        } else if (ignoreShizuku) {
-            proceedChecks(ignoreShizuku = true)
         } else {
             val shizukuPermPrompts = prefs.getInt("shizuku_perm_prompt_count", 0)
             if (shizukuPermPrompts < 3) {
@@ -431,7 +401,6 @@ class MainActivity : AppCompatActivity() {
                     Shizuku.requestPermission(1001)
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    Toast.makeText(this, "Failed to request Shizuku permission", Toast.LENGTH_SHORT).show()
                     prefs.edit().putBoolean("ignore_shizuku", true).apply()
                     proceedChecks(ignoreShizuku = true)
                 }

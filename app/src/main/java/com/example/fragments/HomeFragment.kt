@@ -373,7 +373,8 @@ class HomeFragment : Fragment() {
                         .setOngoing(true)
                         .setProgress(0, 0, true)
 
-                RenameUtil.executeShizukuScriptAsync(
+                if (RenameUtil.useShizukuOps && RenameUtil.shizukuAvailable()) {
+                    RenameUtil.executeShizukuScriptAsync(
                         script = """
                             #!/system/bin/sh
                             ZIP_FILE="/storage/emulated/0/xcel-panel/xcel1.zip"
@@ -392,42 +393,97 @@ class HomeFragment : Fragment() {
                                 exit 1
                             fi
                         """.trimIndent(),
-            onProgress = { line ->
-                requireActivity().runOnUiThread {
-                    if (line.startsWith("STATUS:")) {
-                        tvProgress.text = line.substring(7)
-                        
-                        builder.setContentText(line.substring(7))
-                        notificationManager.notify(1005, builder.build())
-                        
-                        if (tvProgress.text == "Done!") {
-                            progressBar.isIndeterminate = false
-                            progressBar.progress = 100
+                        onProgress = { line ->
+                            requireActivity().runOnUiThread {
+                                if (line.startsWith("STATUS:")) {
+                                    tvProgress.text = line.substring(7)
+                                    
+                                    builder.setContentText(line.substring(7))
+                                    notificationManager.notify(1005, builder.build())
+                                    
+                                    if (tvProgress.text == "Done!") {
+                                        progressBar.isIndeterminate = false
+                                        progressBar.progress = 100
+                                    }
+                                }
+                            }
+                        },
+                        onComplete = { success ->
+                            requireActivity().runOnUiThread {
+                                progressBar.visibility = View.GONE
+                                tvProgress.visibility = View.GONE
+                                
+                                builder.setContentText(if (success) "Extraction completed successfully!" else "Extraction failed!")
+                                    .setProgress(0, 0, false)
+                                    .setOngoing(false)
+                                notificationManager.notify(1005, builder.build())
+                                
+                                if (success) {
+                                    Toast.makeText(ctx, "Activation successful!", Toast.LENGTH_SHORT).show()
+                                    updateUIState()
+                                } else {
+                                    Toast.makeText(ctx, "Error during activation.", Toast.LENGTH_LONG).show()
+                                    btnActivate.isEnabled = true
+                                    updateUIState()
+                                }
+                            }
                         }
-                    }
+                    )
+                } else {
+                    Thread {
+                        val zipFile = java.io.File("/storage/emulated/0/xcel-panel/xcel1.zip")
+                        val destDir = java.io.File("/storage/emulated/0/Android/data")
+                        
+                        val updateProgress = { msg: String ->
+                            requireActivity().runOnUiThread {
+                                tvProgress.text = msg
+                                builder.setContentText(msg)
+                                notificationManager.notify(1005, builder.build())
+                            }
+                        }
+                        
+                        if (!zipFile.exists()) {
+                            updateProgress("Error: Zip file not found in xcel-panel folder")
+                            requireActivity().runOnUiThread {
+                                progressBar.visibility = View.GONE
+                                tvProgress.visibility = View.GONE
+                                builder.setContentText("Extraction failed!").setProgress(0, 0, false).setOngoing(false)
+                                notificationManager.notify(1005, builder.build())
+                                Toast.makeText(ctx, "Error during activation.", Toast.LENGTH_LONG).show()
+                                btnActivate.isEnabled = true
+                                updateUIState()
+                            }
+                            return@Thread
+                        }
+                        
+                        updateProgress("Extracting xcel1.zip (Takes 5-10 mins)...")
+                        try {
+                            RenameUtil.extractZipToDirectoryMerge(zipFile, destDir)
+                            updateProgress("Done!")
+                            requireActivity().runOnUiThread {
+                                progressBar.isIndeterminate = false
+                                progressBar.progress = 100
+                                progressBar.visibility = View.GONE
+                                tvProgress.visibility = View.GONE
+                                builder.setContentText("Extraction completed successfully!").setProgress(0, 0, false).setOngoing(false)
+                                notificationManager.notify(1005, builder.build())
+                                Toast.makeText(ctx, "Activation successful!", Toast.LENGTH_SHORT).show()
+                                updateUIState()
+                            }
+                        } catch (e: Exception) {
+                            updateProgress("Error: Unzip failed")
+                            requireActivity().runOnUiThread {
+                                progressBar.visibility = View.GONE
+                                tvProgress.visibility = View.GONE
+                                builder.setContentText("Extraction failed!").setProgress(0, 0, false).setOngoing(false)
+                                notificationManager.notify(1005, builder.build())
+                                Toast.makeText(ctx, "Error during activation.", Toast.LENGTH_LONG).show()
+                                btnActivate.isEnabled = true
+                                updateUIState()
+                            }
+                        }
+                    }.start()
                 }
-            },
-            onComplete = { success ->
-                requireActivity().runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    tvProgress.visibility = View.GONE
-                    
-                    builder.setContentText(if (success) "Extraction completed successfully!" else "Extraction failed!")
-                        .setProgress(0, 0, false)
-                        .setOngoing(false)
-                    notificationManager.notify(1005, builder.build())
-                    
-                    if (success) {
-                        Toast.makeText(ctx, "Activation successful!", Toast.LENGTH_SHORT).show()
-                        updateUIState()
-                    } else {
-                        Toast.makeText(ctx, "Error during activation.", Toast.LENGTH_LONG).show()
-                        btnActivate.isEnabled = true
-                        updateUIState()
-                    }
-                }
-            }
-        )
             } catch (e: Exception) {
                 e.printStackTrace()
                 requireActivity().runOnUiThread {

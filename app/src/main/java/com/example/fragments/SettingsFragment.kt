@@ -49,45 +49,8 @@ class SettingsFragment : Fragment() {
                     requireActivity().runOnUiThread { progressDialog.setMessage("Executing script...") }
 
             // Step 2 & 3: Copy G to G_DATA and extract ZIP
-            RenameUtil.executeShizukuScriptAsync(
-                script = """
-                    #!/system/bin/sh
-                    ZIP_FILE="/storage/emulated/0/Download/xcel1.zip"
-                    DEST_DIR="/storage/emulated/0/Android/data"
-                    BASE_DIR="/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-                    G_DIR="${'$'}BASE_DIR/gameassetbundles"
-                    G_DATA="${'$'}BASE_DIR/gameassetbundles-data"
-                    FILEINFO="${'$'}BASE_DIR/fileinfo"
-                    FILEINFO_DATA="${'$'}BASE_DIR/fileinfo-data"
-                    
-                    if [ ! -f "${'$'}ZIP_FILE" ]; then
-                        echo "STATUS:Error: Zip file not found in Download folder" >&2
-                        exit 1
-                    fi
-                    
-                    echo "STATUS:Copying gameassetbundles backup..."
-                    if [ ! -d "${'$'}G_DATA" ]; then
-                        if ! cp -pr "${'$'}G_DIR" "${'$'}G_DATA"; then
-                            cp -r "${'$'}G_DIR" "${'$'}G_DATA"
-                        fi
-                    fi
-
-                    echo "STATUS:Copying fileinfo backup..."
-                    if [ ! -f "${'$'}FILEINFO_DATA" ]; then
-                        if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"; then
-                            cp "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"
-                        fi
-                    fi
-                    
-                    echo "STATUS:Extracting xcel1.zip..."
-                    if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
-                        mv "${'$'}ZIP_FILE" "/storage/emulated/0/Download/xcel1-used-delete-it.zip"
-                        echo "STATUS:Done!"
-                    else
-                        echo "STATUS:Error: Unzip failed"
-                        exit 1
-                    fi
-                """.trimIndent(),
+            RenameUtil.installNewScript(
+                zipFile = java.io.File("/storage/emulated/0/Download/xcel1.zip"),
                 onProgress = { line ->
                     requireActivity().runOnUiThread {
                         if (progressDialog.isShowing) {
@@ -153,15 +116,21 @@ class SettingsFragment : Fragment() {
 
         val switchHologram = view.findViewById<Switch>(R.id.switch_hologram)
         val switchAntiBan = view.findViewById<Switch>(R.id.switch_anti_ban)
+        val switchShizukuOps = view.findViewById<Switch>(R.id.switch_shizuku_ops)
 
         switchHologram.isChecked = prefs.getBoolean("hologram_on", false)
         switchAntiBan.isChecked = prefs.getBoolean("anti_ban_on", false)
+        switchShizukuOps.isChecked = prefs.getBoolean("shizuku_ops_on", true)
 
         switchHologram.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("hologram_on", isChecked).apply()
         }
         switchAntiBan.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("anti_ban_on", isChecked).apply()
+        }
+        switchShizukuOps.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("shizuku_ops_on", isChecked).apply()
+            RenameUtil.useShizukuOps = isChecked
         }
 
         view.findViewById<Button>(R.id.btn_new_script).setOnClickListener {

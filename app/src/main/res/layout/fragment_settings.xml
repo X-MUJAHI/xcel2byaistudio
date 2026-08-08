@@ -217,6 +217,41 @@
                     android:checked="false"
                     android:clickable="false" />
             </LinearLayout>
+            <!-- File Operations Header -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="FILE OPERATIONS"
+                android:textColor="#00E5FF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="12dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:background="#1F2937"
+                android:layout_marginBottom="24dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Shizuku Commands for Operations"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp" />
+                <Switch
+                    android:id="@+id/switch_shizuku_ops"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="#00E5FF"
+                    android:trackTint="#7700E5FF"
+                    android:checked="true"/>
+            </LinearLayout>
+
             <!-- Delete Reports Button -->
             <Button
                 android:id="@+id/btn_delete_reports"

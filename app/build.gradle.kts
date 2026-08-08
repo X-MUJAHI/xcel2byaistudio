@@ -45,7 +45,7 @@ android {
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
-      
+      signingConfig = signingConfigs.getByName("debugConfig")
     }
   }
   compileOptions {
@@ -89,7 +89,6 @@ secrets {
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
-  implementation("com.otaliastudios:transcoder:0.11.2")
   implementation(libs.androidx.appcompat)
   implementation(libs.material)
   implementation(libs.shizuku.api)

@@ -6,6 +6,7 @@ import com.example.MainActivity
 import java.io.File
 
 object RenameUtil {
+    var useShizukuOps: Boolean = true
 
     fun shizukuAvailable(): Boolean {
         return try {
@@ -131,8 +132,8 @@ object RenameUtil {
 
 
     fun checkDirExists(path: String): Boolean {
-        if (!shizukuAvailable()) {
-            return File(path).exists()
+        if (!useShizukuOps || !shizukuAvailable()) {
+            return File(path).isDirectory
         }
         return try {
             val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
@@ -156,8 +157,8 @@ object RenameUtil {
     }
 
     fun checkFileExists(path: String): Boolean {
-        if (!shizukuAvailable()) {
-            return File(path).exists()
+        if (!useShizukuOps || !shizukuAvailable()) {
+            return File(path).isFile
         }
         return try {
             val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
@@ -190,13 +191,21 @@ object RenameUtil {
         val fileinfoMujahi = "$baseDir/fileinfo-mujahi"
         
         if (checkDirExists(gMujahi)) {
-            val cmd = """
-                mv "$gDir" "$gData" && \
-                mv "$gMujahi" "$gDir" && \
-                mv "$fileinfo" "$fileinfoData" && \
-                mv "$fileinfoMujahi" "$fileinfo"
-            """.trimIndent()
-            return executeShizukuCommand(cmd)
+            if (useShizukuOps && shizukuAvailable()) {
+                val cmd = """
+                    mv "$gDir" "$gData" && \
+                    mv "$gMujahi" "$gDir" && \
+                    mv "$fileinfo" "$fileinfoData" && \
+                    mv "$fileinfoMujahi" "$fileinfo"
+                """.trimIndent()
+                return executeShizukuCommand(cmd)
+            } else {
+                val f1 = File(gDir).renameTo(File(gData))
+                val f2 = File(gMujahi).renameTo(File(gDir))
+                val f3 = File(fileinfo).renameTo(File(fileinfoData))
+                val f4 = File(fileinfoMujahi).renameTo(File(fileinfo))
+                return f1 && f2 && f3 && f4
+            }
         }
         return false
     }
@@ -211,14 +220,22 @@ object RenameUtil {
         val fileinfoMujahi = "$baseDir/fileinfo-mujahi"
         
         if (checkDirExists(gData)) {
-            val cmd = """
-                mv "$gDir" "$gMujahi" && \
-                mv "$gData" "$gDir" && \
-                mv "$fileinfo" "$fileinfoMujahi" && \
-                mv "$fileinfoData" "$fileinfo"
-            """.trimIndent()
-            val success = executeShizukuCommand(cmd)
-            return if (success) "SUCCESS" else "ERROR"
+            if (useShizukuOps && shizukuAvailable()) {
+                val cmd = """
+                    mv "$gDir" "$gMujahi" && \
+                    mv "$gData" "$gDir" && \
+                    mv "$fileinfo" "$fileinfoMujahi" && \
+                    mv "$fileinfoData" "$fileinfo"
+                """.trimIndent()
+                val success = executeShizukuCommand(cmd)
+                return if (success) "SUCCESS" else "ERROR"
+            } else {
+                val f1 = File(gDir).renameTo(File(gMujahi))
+                val f2 = File(gData).renameTo(File(gDir))
+                val f3 = File(fileinfo).renameTo(File(fileinfoMujahi))
+                val f4 = File(fileinfoData).renameTo(File(fileinfo))
+                return if (f1 && f2 && f3 && f4) "SUCCESS" else "ERROR"
+            }
         }
         return "DIR_NOT_FOUND"
     }
@@ -226,7 +243,7 @@ object RenameUtil {
     fun copyDirectory(source: File, target: File) {
         val srcPath = source.absolutePath
         val destPath = target.absolutePath
-        if (shizukuAvailable()) {
+        if (useShizukuOps && shizukuAvailable()) {
             val cmd = "mkdir -p \"$destPath\" && cp -r \"$srcPath\"/. \"$destPath\""
             executeShizukuCommand(cmd)
         } else {
@@ -246,7 +263,7 @@ object RenameUtil {
     fun extractZipToDirectoryMerge(zipFile: File, targetDir: File) {
         val zipPath = zipFile.absolutePath
         val destPath = targetDir.absolutePath
-        if (shizukuAvailable()) {
+        if (useShizukuOps && shizukuAvailable()) {
             val cmd = "unzip -o \"$zipPath\" -d \"$destPath\""
             executeShizukuCommand(cmd)
         } else {
@@ -271,22 +288,108 @@ object RenameUtil {
     }
 
     fun getGameUIDs(): List<String> {
-        if (!shizukuAvailable()) return emptyList()
         val uids = mutableListOf<String>()
         val dirs = listOf(
             "/storage/emulated/0/Android/data/com.dts.freefiremax/files/Workshop",
             "/storage/emulated/0/Android/data/com.dts.freefireth/files/Workshop"
         )
-        for (dir in dirs) {
-            val output = executeShizukuCommandWithOutput("ls '$dir' 2>/dev/null")
-            val lines = output.split("\n")
-            for (line in lines) {
-                val name = line.trim()
-                if (name.isNotEmpty() && name.all { it.isDigit() }) {
-                    uids.add(name)
+        if (useShizukuOps && shizukuAvailable()) {
+            for (dir in dirs) {
+                val output = executeShizukuCommandWithOutput("ls '$dir' 2>/dev/null")
+                val lines = output.split("\n")
+                for (line in lines) {
+                    val name = line.trim()
+                    if (name.isNotEmpty() && name.all { it.isDigit() }) {
+                        uids.add(name)
+                    }
+                }
+            }
+        } else {
+            for (dir in dirs) {
+                File(dir).listFiles()?.forEach { file ->
+                    if (file.isDirectory && file.name.all { it.isDigit() }) {
+                        uids.add(file.name)
+                    }
                 }
             }
         }
         return uids.distinct()
+    }
+
+    fun installNewScript(zipFile: File, onProgress: (String) -> Unit, onComplete: (Boolean) -> Unit) {
+        val destDir = File("/storage/emulated/0/Android/data")
+        val baseDir = File("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android")
+        val gDir = File(baseDir, "gameassetbundles")
+        val gData = File(baseDir, "gameassetbundles-data")
+        val fileinfo = File(baseDir, "fileinfo")
+        val fileinfoData = File(baseDir, "fileinfo-data")
+
+        if (useShizukuOps && shizukuAvailable()) {
+            val script = """
+                #!/system/bin/sh
+                ZIP_FILE="${zipFile.absolutePath}"
+                DEST_DIR="${destDir.absolutePath}"
+                BASE_DIR="${baseDir.absolutePath}"
+                G_DIR="${gDir.absolutePath}"
+                G_DATA="${gData.absolutePath}"
+                FILEINFO="${fileinfo.absolutePath}"
+                FILEINFO_DATA="${fileinfoData.absolutePath}"
+                
+                if [ ! -f "${'$'}ZIP_FILE" ]; then
+                    echo "STATUS:Error: Zip file not found" >&2
+                    exit 1
+                fi
+                
+                echo "STATUS:Copying gameassetbundles backup..."
+                if [ ! -d "${'$'}G_DATA" ]; then
+                    if ! cp -pr "${'$'}G_DIR" "${'$'}G_DATA"; then
+                        cp -r "${'$'}G_DIR" "${'$'}G_DATA"
+                    fi
+                fi
+                
+                echo "STATUS:Copying fileinfo backup..."
+                if [ ! -f "${'$'}FILEINFO_DATA" ]; then
+                    if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"; then
+                        cp "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"
+                    fi
+                fi
+                
+                echo "STATUS:Extracting ${zipFile.name}..."
+                if unzip -o -q "${'$'}ZIP_FILE" -d "${'$'}DEST_DIR" ; then
+                    mv "${'$'}ZIP_FILE" "/storage/emulated/0/Download/xcel1-used-delete-it.zip"
+                    echo "STATUS:Done!"
+                else
+                    echo "STATUS:Error: Unzip failed"
+                    exit 1
+                fi
+            """.trimIndent()
+            executeShizukuScriptAsync(script, onProgress, onComplete)
+        } else {
+            Thread {
+                try {
+                    if (!zipFile.exists()) {
+                        onProgress("STATUS:Error: Zip file not found")
+                        onComplete(false)
+                        return@Thread
+                    }
+                    onProgress("STATUS:Copying gameassetbundles backup...")
+                    if (!gData.exists()) {
+                        copyDirectory(gDir, gData)
+                    }
+                    onProgress("STATUS:Copying fileinfo backup...")
+                    if (!fileinfoData.exists()) {
+                        fileinfo.copyTo(fileinfoData, overwrite = true)
+                    }
+                    onProgress("STATUS:Extracting ${zipFile.name}...")
+                    extractZipToDirectoryMerge(zipFile, destDir)
+                    zipFile.renameTo(File("/storage/emulated/0/Download/xcel1-used-delete-it.zip"))
+                    onProgress("STATUS:Done!")
+                    onComplete(true)
+                } catch (e: Exception) {
+                    onProgress("STATUS:Error: ${e.message}")
+                    onComplete(false)
+                }
+            }.start()
+        }
     }
 }
