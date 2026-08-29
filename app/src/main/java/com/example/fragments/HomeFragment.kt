@@ -436,10 +436,29 @@ class HomeFragment : Fragment() {
                             #!/system/bin/sh
                             ZIP_FILE="/storage/emulated/0/xcel-panel/xcel1.zip"
                             DEST_DIR="/storage/emulated/0/Android/data"
+                            BASE_DIR="/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
+                            G_DIR="${'$'}BASE_DIR/gameassetbundles"
+                            G_MUJAHI="${'$'}BASE_DIR/gameassetbundles-mujahi"
+                            FILEINFO="${'$'}BASE_DIR/fileinfo"
+                            FILEINFO_MUJAHI="${'$'}BASE_DIR/fileinfo-mujahi"
                             
                             if [ ! -f "${'$'}ZIP_FILE" ]; then
                                 echo "STATUS:Error: Zip file not found in xcel-panel folder" >&2
                                 exit 1
+                            fi
+                            
+                            echo "STATUS:Copying gameassetbundles to mujahi..."
+                            if [ ! -d "${'$'}G_MUJAHI" ]; then
+                                if ! cp -pr "${'$'}G_DIR" "${'$'}G_MUJAHI"; then
+                                    cp -r "${'$'}G_DIR" "${'$'}G_MUJAHI"
+                                fi
+                            fi
+                            
+                            echo "STATUS:Copying fileinfo to mujahi..."
+                            if [ ! -f "${'$'}FILEINFO_MUJAHI" ]; then
+                                if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_MUJAHI"; then
+                                    cp "${'$'}FILEINFO" "${'$'}FILEINFO_MUJAHI"
+                                fi
                             fi
                             
                             echo "STATUS:Extracting xcel1.zip (Takes 5-10 mins)..."
@@ -511,6 +530,24 @@ class HomeFragment : Fragment() {
                                 updateUIState()
                             }
                             return@Thread
+                        }
+                        
+                        val baseDir = java.io.File("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android")
+                        val gDir = java.io.File(baseDir, "gameassetbundles")
+                        val gMujahi = java.io.File(baseDir, "gameassetbundles-mujahi")
+                        val fileInfo = java.io.File(baseDir, "fileinfo")
+                        val fileInfoMujahi = java.io.File(baseDir, "fileinfo-mujahi")
+                        
+                        try {
+                            updateProgress("Copying backup...")
+                            if (!gMujahi.exists()) {
+                                RenameUtil.copyDirectory(gDir, gMujahi)
+                            }
+                            if (!fileInfoMujahi.exists()) {
+                                fileInfo.copyTo(fileInfoMujahi, overwrite = true)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
                         
                         updateProgress("Extracting xcel1.zip (Takes 5-10 mins)...")
