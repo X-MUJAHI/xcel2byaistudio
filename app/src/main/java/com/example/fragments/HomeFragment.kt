@@ -28,6 +28,7 @@ class HomeFragment : Fragment() {
     private lateinit var btnActivate: Button
     private lateinit var btnTogglePower: Button
     private lateinit var btnOpenGame: Button
+    private lateinit var btnBoost: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var tvProgress: TextView
     private lateinit var tvVersion: TextView
@@ -74,6 +75,7 @@ class HomeFragment : Fragment() {
         btnActivate = view.findViewById(R.id.btn_activate)
         btnTogglePower = view.findViewById(R.id.btn_toggle_power)
         btnOpenGame = view.findViewById(R.id.btn_open_game)
+        btnBoost = view.findViewById(R.id.btn_boost)
         progressBar = view.findViewById(R.id.progress_bar)
         tvProgress = view.findViewById(R.id.tv_progress)
         tvVersion = view.findViewById(R.id.tv_version)
@@ -124,6 +126,37 @@ class HomeFragment : Fragment() {
             } else {
                 handleTurnOn()
             }
+        }
+        
+        btnBoost.setOnClickListener {
+            // Little bounce animation
+            btnBoost.animate()
+                .scaleX(0.9f).scaleY(0.9f)
+                .setDuration(100)
+                .withEndAction {
+                    btnBoost.animate()
+                        .scaleX(1f).scaleY(1f)
+                        .setDuration(100)
+                        .start()
+                }
+                .start()
+                
+            Thread {
+                if (RenameUtil.useShizukuOps && RenameUtil.shizukuAvailable()) {
+                    val success = RenameUtil.executeShizukuCommand("pm trim-caches 999999G")
+                    requireActivity().runOnUiThread {
+                        if (success) {
+                            Toast.makeText(context, "Device Boosted! Caches cleared.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to clear caches.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(context, "Shizuku is required for Boost feature.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }.start()
         }
         
         btnOpenGame.setOnClickListener {

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+content = """<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -265,3 +265,6 @@
             android:layout_marginStart="8dp"/>
     </LinearLayout>
 </LinearLayout>
+"""
+with open("app/src/main/res/layout/fragment_home.xml", "w") as f:
+    f.write(content)
