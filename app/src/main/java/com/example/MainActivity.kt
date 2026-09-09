@@ -753,10 +753,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun executeExpirationTurnOff(onComplete: () -> Unit) {
         Thread {
-            if (RenameUtil.checkDirExists(APP_FOLDER.absolutePath) &&
-                RenameUtil.checkDirExists(DATA_FOLDER.absolutePath)) {
-                RenameUtil.turnOff()
-            }
+            RenameUtil.turnOff()
             runOnUiThread {
                 AlarmReceiver.cancelAlarm(this)
                 prefs.edit().remove(KEY_AUTO_OFF_TIME).apply()
