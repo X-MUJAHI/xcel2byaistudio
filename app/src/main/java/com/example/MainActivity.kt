@@ -802,14 +802,14 @@ class MainActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.bottom_bar).visibility = View.VISIBLE
     }
 
-    fun executeTurnOnGlobal(onComplete: (() -> Unit)? = null) {
+    fun executeTurnOnGlobal(onComplete: ((Boolean) -> Unit)? = null) {
         Thread {
-            RenameUtil.turnOn()
+            val success = RenameUtil.turnOn()
             runOnUiThread {
-                if (prefs.getString(KEY_USER_TYPE, null) == "NORMAL") {
+                if (success && prefs.getString(KEY_USER_TYPE, null) == "NORMAL") {
                     scheduleAutoOffAlarm()
                 }
-                onComplete?.invoke()
+                onComplete?.invoke(success)
             }
         }.start()
     }

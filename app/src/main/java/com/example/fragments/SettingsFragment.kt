@@ -40,8 +40,8 @@ class SettingsFragment : Fragment() {
         
                 Thread {
                     // Step 1: If panel is ON, turn it OFF
-                    if (RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath) &&
-                        RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)) {
+                    val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+                    if (RenameUtil.checkDirExists("$optDir/android-data")) {
                         requireActivity().runOnUiThread { progressDialog.setMessage("Turning OFF existing panel...") }
                         RenameUtil.turnOff()
                     }

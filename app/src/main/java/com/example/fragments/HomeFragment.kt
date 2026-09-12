@@ -57,18 +57,26 @@ class HomeFragment : Fragment() {
         tvStatus.setOnClickListener {
             Thread {
                 val fExists = RenameUtil.checkDirExists(MainActivity.APP_FOLDER.absolutePath)
-                val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
-                val sCountStr = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.* 2>/dev/null | wc -l").trim()
-                val zipExists = RenameUtil.checkDirExists("/storage/emulated/0/Download/xcel1.zip")
+                val zipDownloadExists = RenameUtil.checkFileExists("/storage/emulated/0/Download/xcel1.zip")
+                val zipPanelExists = RenameUtil.checkFileExists("/storage/emulated/0/xcel-panel/xcel1.zip")
                 val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
                 val aExists = RenameUtil.checkDirExists("$optDir/android")
                 val aDataExists = RenameUtil.checkDirExists("$optDir/android-data")
                 val aMujahiExists = RenameUtil.checkDirExists("$optDir/android-mujahi")
+                val shizukuOk = RenameUtil.shizukuAvailable()
                 
-                val msg = "Diagnostics:\n\$F exists: $fExists\n\$D exists: $dExists\n\$S count: $sCountStr\nDownload/xcel1.zip exists: $zipExists\nandroid: $aExists\nandroid-data: $aDataExists\nandroid-mujahi: $aMujahiExists"
+                val msg = "Diagnostics:\n" +
+                        "Shizuku Authorized: $shizukuOk\n" +
+                        "Free Fire Folder: $fExists\n" +
+                        "Download/xcel1.zip: $zipDownloadExists\n" +
+                        "xcel-panel/xcel1.zip: $zipPanelExists\n" +
+                        "android (Active): $aExists\n" +
+                        "android-data (Mod Backup): $aDataExists\n" +
+                        "android-mujahi (Original Backup): $aMujahiExists\n" +
+                        "Last Error: ${RenameUtil.lastError.ifEmpty { "None" }}"
                 requireActivity().runOnUiThread {
                     android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
-                        .setTitle("System Status")
+                        .setTitle("System Diagnostics")
                         .setMessage(msg)
                         .setPositiveButton("OK", null)
                         .show()
@@ -300,7 +308,7 @@ class HomeFragment : Fragment() {
         progressDialog.show()
         
         val activity = requireActivity() as MainActivity
-        activity.executeTurnOnGlobal {
+        activity.executeTurnOnGlobal { success ->
             updateUIState()
             
             // Calculate remaining time to wait (min 3 seconds total)
@@ -309,17 +317,22 @@ class HomeFragment : Fragment() {
             
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 progressDialog.dismiss()
-                Toast.makeText(context, "Anti-Ban applied! Launching...", Toast.LENGTH_SHORT).show()
-                
-                // Start GameMonitorService
-                val serviceIntent = Intent(requireContext(), com.example.services.GameMonitorService::class.java)
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    requireContext().startForegroundService(serviceIntent)
+                if (success) {
+                    Toast.makeText(context, "Anti-Ban applied! Launching...", Toast.LENGTH_SHORT).show()
+                    
+                    // Start GameMonitorService
+                    val serviceIntent = Intent(requireContext(), com.example.services.GameMonitorService::class.java)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        requireContext().startForegroundService(serviceIntent)
+                    } else {
+                        requireContext().startService(serviceIntent)
+                    }
+                    
+                    startActivity(launchIntent)
                 } else {
-                    requireContext().startService(serviceIntent)
+                    val err = RenameUtil.lastError.ifEmpty { "Please activate panel first." }
+                    Toast.makeText(context, "Could not turn on: $err", Toast.LENGTH_LONG).show()
                 }
-                
-                startActivity(launchIntent)
             }, remainingWait)
         }
     }
@@ -329,8 +342,6 @@ class HomeFragment : Fragment() {
 
     private fun updateUIState() {
         Thread {
-            RenameUtil.cleanupLegacyFiles()
-
             val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
             val aDirExists = RenameUtil.checkDirExists("$optDir/android")
             val aDataExists = RenameUtil.checkDirExists("$optDir/android-data")
@@ -638,11 +649,16 @@ class HomeFragment : Fragment() {
         
         val activity = requireActivity() as MainActivity
         btnTogglePower.isEnabled = false
-        activity.executeTurnOnGlobal {
+        activity.executeTurnOnGlobal { success ->
             btnTogglePower.isEnabled = true
-            Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
+            if (success) {
+                Toast.makeText(context, "Mod turned on", Toast.LENGTH_SHORT).show()
+                startTimerUpdate()
+            } else {
+                val err = RenameUtil.lastError.ifEmpty { "Check if app is activated first." }
+                Toast.makeText(context, "Failed to turn on: $err", Toast.LENGTH_LONG).show()
+            }
             updateUIState()
-            startTimerUpdate()
         }
     }
 
@@ -657,8 +673,11 @@ class HomeFragment : Fragment() {
             btnTogglePower.isEnabled = true
             if (result == "SUCCESS") {
                 Toast.makeText(context, "Mod turned off", Toast.LENGTH_SHORT).show()
+            } else if (result == "DIR_NOT_FOUND") {
+                Toast.makeText(context, "App is not activated or folders missing.", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(context, "Error turning off. Check folders.", Toast.LENGTH_SHORT).show()
+                val err = RenameUtil.lastError.ifEmpty { "Check folders." }
+                Toast.makeText(context, "Error turning off: $err", Toast.LENGTH_SHORT).show()
             }
             updateUIState()
             countDownTimer?.cancel()

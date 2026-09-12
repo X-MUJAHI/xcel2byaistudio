@@ -7,6 +7,7 @@ import java.io.File
 
 object RenameUtil {
     var useShizukuOps: Boolean = true
+    var lastError: String = ""
 
     fun shizukuAvailable(): Boolean {
         return try {
@@ -18,6 +19,7 @@ object RenameUtil {
 
     fun executeShizukuCommand(command: String): Boolean {
         if (!shizukuAvailable()) {
+            lastError = "Shizuku not available or permission denied"
             return false
         }
         return try {
@@ -35,9 +37,36 @@ object RenameUtil {
                 null,
                 null
             ) as rikka.shizuku.ShizukuRemoteProcess
-            process.waitFor() == 0
+
+            val errBuilder = StringBuilder()
+            val errThread = Thread {
+                try {
+                    val errReader = java.io.BufferedReader(java.io.InputStreamReader(process.errorStream))
+                    var line: String?
+                    while (errReader.readLine().also { line = it } != null) {
+                        errBuilder.append(line).append("\n")
+                    }
+                } catch (ignored: Exception) {}
+            }
+            errThread.start()
+
+            val exitCode = process.waitFor()
+            errThread.join(2000)
+
+            if (exitCode != 0) {
+                lastError = errBuilder.toString().trim()
+                if (lastError.isEmpty()) {
+                    lastError = "Command exited with code $exitCode"
+                }
+                android.util.Log.e("RenameUtil", "Command failed ($exitCode): $command\nError: $lastError")
+                false
+            } else {
+                lastError = ""
+                true
+            }
         } catch (e: Exception) {
             e.printStackTrace()
+            lastError = e.message ?: "Unknown exception"
             false
         }
     }
@@ -112,18 +141,29 @@ object RenameUtil {
                 null
             ) as rikka.shizuku.ShizukuRemoteProcess
             
-            val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
             val output = StringBuilder()
+            val errOutput = StringBuilder()
+            val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+            val errReader = java.io.BufferedReader(java.io.InputStreamReader(process.errorStream))
+
+            val errThread = Thread {
+                try {
+                    var line: String?
+                    while (errReader.readLine().also { line = it } != null) {
+                        errOutput.append(line).append("\n")
+                    }
+                } catch (ignored: Exception) {}
+            }
+            errThread.start()
+
             var line: String?
             while (reader.readLine().also { line = it } != null) {
                 output.append(line).append("\n")
             }
-            val errReader = java.io.BufferedReader(java.io.InputStreamReader(process.errorStream))
-            while (errReader.readLine().also { line = it } != null) {
-                output.append(line).append("\n")
-            }
+
             process.waitFor()
-            output.toString()
+            errThread.join(2000)
+            if (output.isNotEmpty()) output.toString() else errOutput.toString()
         } catch (e: Exception) {
             e.printStackTrace()
             "Error: ${e.message}"
@@ -181,45 +221,7 @@ object RenameUtil {
         }
     }
 
-    fun cleanupLegacyFiles() {
-        val optionalDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
-        val legacyBase = "$optionalDir/android"
-        val legacyGData = "$legacyBase/gameassetbundles-data"
-        val legacyGMujahi = "$legacyBase/gameassetbundles-mujahi"
-        val legacyGDir = "$legacyBase/gameassetbundles"
-        val legacyFIData = "$legacyBase/fileinfo-data"
-        val legacyFIMujahi = "$legacyBase/fileinfo-mujahi"
-        val legacyFIDir = "$legacyBase/fileinfo"
-
-        if (checkDirExists(legacyGData)) {
-            if (useShizukuOps && shizukuAvailable()) {
-                executeShizukuCommand("""
-                    mv "$legacyGDir" "$legacyGMujahi" 2>/dev/null
-                    mv "$legacyGData" "$legacyGDir" 2>/dev/null
-                    mv "$legacyFIDir" "$legacyFIMujahi" 2>/dev/null
-                    mv "$legacyFIData" "$legacyFIDir" 2>/dev/null
-                    rm -rf "$legacyGMujahi" "$legacyFIMujahi" 2>/dev/null
-                """.trimIndent())
-            } else {
-                File(legacyGDir).renameTo(File(legacyGMujahi))
-                File(legacyGData).renameTo(File(legacyGDir))
-                File(legacyFIDir).renameTo(File(legacyFIMujahi))
-                File(legacyFIData).renameTo(File(legacyFIDir))
-                File(legacyGMujahi).deleteRecursively()
-                File(legacyFIMujahi).deleteRecursively()
-            }
-        } else if (checkDirExists(legacyGMujahi)) {
-            if (useShizukuOps && shizukuAvailable()) {
-                executeShizukuCommand("rm -rf \"$legacyGMujahi\" \"$legacyFIMujahi\" 2>/dev/null")
-            } else {
-                File(legacyGMujahi).deleteRecursively()
-                File(legacyFIMujahi).deleteRecursively()
-            }
-        }
-    }
-
     fun turnOn(): Boolean {
-        cleanupLegacyFiles()
         val optionalDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
         val aDir = "$optionalDir/android"
         val aData = "$optionalDir/android-data"
@@ -232,25 +234,49 @@ object RenameUtil {
         if (checkDirExists(aMujahi)) {
             if (useShizukuOps && shizukuAvailable()) {
                 val cmd = """
-                    rm -rf "$aData" 2>/dev/null
-                    mv "$aDir" "$aData" && \
-                    mv "$aMujahi" "$aDir"
+                    OPT="$optionalDir"
+                    ADIR="${'$'}OPT/android"
+                    ADATA="${'$'}OPT/android-data"
+                    AMUJAHI="${'$'}OPT/android-mujahi"
+
+                    if [ -d "${'$'}AMUJAHI/android" ] && [ ! -d "${'$'}ADIR" ]; then
+                        mv "${'$'}AMUJAHI/android" "${'$'}ADIR"
+                    fi
+
+                    if [ -d "${'$'}ADIR" ]; then
+                        if [ -d "${'$'}ADATA" ]; then
+                            rm -rf "${'$'}OPT/.old_adata" 2>/dev/null
+                            mv "${'$'}ADATA" "${'$'}OPT/.old_adata" 2>/dev/null
+                        fi
+                        mv "${'$'}ADIR" "${'$'}ADATA" || exit 1
+                        rm -rf "${'$'}OPT/.old_adata" 2>/dev/null
+                    fi
+
+                    if [ -d "${'$'}AMUJAHI" ]; then
+                        mv "${'$'}AMUJAHI" "${'$'}ADIR" || exit 1
+                    else
+                        echo "android-mujahi does not exist" >&2
+                        exit 1
+                    fi
+                    exit 0
                 """.trimIndent()
                 return executeShizukuCommand(cmd)
             } else {
-                if (File(aData).exists()) {
-                    File(aData).deleteRecursively()
-                }
-                val f1 = File(aDir).renameTo(File(aData))
+                val f1 = if (File(aDir).exists()) {
+                    if (File(aData).exists()) {
+                        File(aData).deleteRecursively()
+                    }
+                    File(aDir).renameTo(File(aData))
+                } else true
                 val f2 = File(aMujahi).renameTo(File(aDir))
                 return f1 && f2
             }
         }
+        lastError = "Folder 'android-mujahi' not found. Please activate the panel first."
         return false
     }
 
     fun turnOff(): String {
-        cleanupLegacyFiles()
         val optionalDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
         val aDir = "$optionalDir/android"
         val aData = "$optionalDir/android-data"
@@ -259,32 +285,63 @@ object RenameUtil {
         if (checkDirExists(aData)) {
             if (useShizukuOps && shizukuAvailable()) {
                 val cmd = """
-                    rm -rf "$aMujahi" 2>/dev/null
-                    mv "$aDir" "$aMujahi" && \
-                    mv "$aData" "$aDir"
+                    OPT="$optionalDir"
+                    ADIR="${'$'}OPT/android"
+                    ADATA="${'$'}OPT/android-data"
+                    AMUJAHI="${'$'}OPT/android-mujahi"
+
+                    if [ -d "${'$'}ADATA/android" ] && [ ! -d "${'$'}ADIR" ]; then
+                        mv "${'$'}ADATA/android" "${'$'}ADIR"
+                    fi
+
+                    if [ -d "${'$'}ADIR" ]; then
+                        if [ -d "${'$'}AMUJAHI" ]; then
+                            rm -rf "${'$'}OPT/.old_amujahi" 2>/dev/null
+                            mv "${'$'}AMUJAHI" "${'$'}OPT/.old_amujahi" 2>/dev/null
+                        fi
+                        mv "${'$'}ADIR" "${'$'}AMUJAHI" || exit 1
+                        rm -rf "${'$'}OPT/.old_amujahi" 2>/dev/null
+                    fi
+
+                    if [ -d "${'$'}ADATA" ]; then
+                        mv "${'$'}ADATA" "${'$'}ADIR" || exit 1
+                    else
+                        echo "android-data does not exist" >&2
+                        exit 1
+                    fi
+                    exit 0
                 """.trimIndent()
                 val success = executeShizukuCommand(cmd)
                 return if (success) "SUCCESS" else "ERROR"
             } else {
-                if (File(aMujahi).exists()) {
-                    File(aMujahi).deleteRecursively()
-                }
-                val f1 = File(aDir).renameTo(File(aMujahi))
+                val f1 = if (File(aDir).exists()) {
+                    if (File(aMujahi).exists()) {
+                        File(aMujahi).deleteRecursively()
+                    }
+                    File(aDir).renameTo(File(aMujahi))
+                } else true
                 val f2 = File(aData).renameTo(File(aDir))
                 return if (f1 && f2) "SUCCESS" else "ERROR"
             }
         } else if (checkDirExists(aMujahi)) {
             return "SUCCESS"
         }
+        lastError = "Neither android-data nor android-mujahi was found."
         return "DIR_NOT_FOUND"
     }
 
-    fun copyDirectory(source: File, target: File) {
+    fun copyDirectory(source: File, target: File): Boolean {
         val srcPath = source.absolutePath
         val destPath = target.absolutePath
         if (useShizukuOps && shizukuAvailable()) {
-            val cmd = "mkdir -p \"$destPath\" && cp -r \"$srcPath\"/. \"$destPath\""
-            executeShizukuCommand(cmd)
+            val cmd = """
+                rm -rf "$destPath" 2>/dev/null
+                mkdir -p "$destPath"
+                if ! cp -pr "$srcPath/." "$destPath/"; then
+                    cp -r "$srcPath/." "$destPath/"
+                fi
+            """.trimIndent()
+            return executeShizukuCommand(cmd)
         } else {
             // fallback (will likely fail on Android 11+ but keeps compilation and structure)
             if (!target.exists()) target.mkdirs()
@@ -296,6 +353,7 @@ object RenameUtil {
                     file.copyTo(dest, overwrite = true)
                 }
             }
+            return target.exists()
         }
     }
 
