@@ -833,9 +833,9 @@ class MainActivity : AppCompatActivity() {
 
     fun forceTurnOffIfNeeded(callback: () -> Unit) {
         Thread {
-            val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-            val gData = "$baseDir/gameassetbundles-data"
-            if (RenameUtil.checkDirExists(gData)) {
+            val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+            val aData = "$optDir/android-data"
+            if (RenameUtil.checkDirExists(aData)) {
                 RenameUtil.turnOff()
                 runOnUiThread {
                     AlarmReceiver.cancelAlarm(this)

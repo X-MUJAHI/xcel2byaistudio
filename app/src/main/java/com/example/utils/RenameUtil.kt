@@ -181,61 +181,100 @@ object RenameUtil {
         }
     }
 
+    fun cleanupLegacyFiles() {
+        val optionalDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+        val legacyBase = "$optionalDir/android"
+        val legacyGData = "$legacyBase/gameassetbundles-data"
+        val legacyGMujahi = "$legacyBase/gameassetbundles-mujahi"
+        val legacyGDir = "$legacyBase/gameassetbundles"
+        val legacyFIData = "$legacyBase/fileinfo-data"
+        val legacyFIMujahi = "$legacyBase/fileinfo-mujahi"
+        val legacyFIDir = "$legacyBase/fileinfo"
+
+        if (checkDirExists(legacyGData)) {
+            if (useShizukuOps && shizukuAvailable()) {
+                executeShizukuCommand("""
+                    mv "$legacyGDir" "$legacyGMujahi" 2>/dev/null
+                    mv "$legacyGData" "$legacyGDir" 2>/dev/null
+                    mv "$legacyFIDir" "$legacyFIMujahi" 2>/dev/null
+                    mv "$legacyFIData" "$legacyFIDir" 2>/dev/null
+                    rm -rf "$legacyGMujahi" "$legacyFIMujahi" 2>/dev/null
+                """.trimIndent())
+            } else {
+                File(legacyGDir).renameTo(File(legacyGMujahi))
+                File(legacyGData).renameTo(File(legacyGDir))
+                File(legacyFIDir).renameTo(File(legacyFIMujahi))
+                File(legacyFIData).renameTo(File(legacyFIDir))
+                File(legacyGMujahi).deleteRecursively()
+                File(legacyFIMujahi).deleteRecursively()
+            }
+        } else if (checkDirExists(legacyGMujahi)) {
+            if (useShizukuOps && shizukuAvailable()) {
+                executeShizukuCommand("rm -rf \"$legacyGMujahi\" \"$legacyFIMujahi\" 2>/dev/null")
+            } else {
+                File(legacyGMujahi).deleteRecursively()
+                File(legacyFIMujahi).deleteRecursively()
+            }
+        }
+    }
+
     fun turnOn(): Boolean {
-        val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-        val gDir = "$baseDir/gameassetbundles"
-        val gData = "$baseDir/gameassetbundles-data"
-        val gMujahi = "$baseDir/gameassetbundles-mujahi"
-        val fileinfo = "$baseDir/fileinfo"
-        val fileinfoData = "$baseDir/fileinfo-data"
-        val fileinfoMujahi = "$baseDir/fileinfo-mujahi"
+        cleanupLegacyFiles()
+        val optionalDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+        val aDir = "$optionalDir/android"
+        val aData = "$optionalDir/android-data"
+        val aMujahi = "$optionalDir/android-mujahi"
+
+        if (checkDirExists(aData) && !checkDirExists(aMujahi)) {
+            return true
+        }
         
-        if (checkDirExists(gMujahi)) {
+        if (checkDirExists(aMujahi)) {
             if (useShizukuOps && shizukuAvailable()) {
                 val cmd = """
-                    mv "$gDir" "$gData" && \
-                    mv "$gMujahi" "$gDir" && \
-                    mv "$fileinfo" "$fileinfoData" && \
-                    mv "$fileinfoMujahi" "$fileinfo"
+                    rm -rf "$aData" 2>/dev/null
+                    mv "$aDir" "$aData" && \
+                    mv "$aMujahi" "$aDir"
                 """.trimIndent()
                 return executeShizukuCommand(cmd)
             } else {
-                val f1 = File(gDir).renameTo(File(gData))
-                val f2 = File(gMujahi).renameTo(File(gDir))
-                val f3 = File(fileinfo).renameTo(File(fileinfoData))
-                val f4 = File(fileinfoMujahi).renameTo(File(fileinfo))
-                return f1 && f2 && f3 && f4
+                if (File(aData).exists()) {
+                    File(aData).deleteRecursively()
+                }
+                val f1 = File(aDir).renameTo(File(aData))
+                val f2 = File(aMujahi).renameTo(File(aDir))
+                return f1 && f2
             }
         }
         return false
     }
 
     fun turnOff(): String {
-        val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-        val gDir = "$baseDir/gameassetbundles"
-        val gData = "$baseDir/gameassetbundles-data"
-        val gMujahi = "$baseDir/gameassetbundles-mujahi"
-        val fileinfo = "$baseDir/fileinfo"
-        val fileinfoData = "$baseDir/fileinfo-data"
-        val fileinfoMujahi = "$baseDir/fileinfo-mujahi"
+        cleanupLegacyFiles()
+        val optionalDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+        val aDir = "$optionalDir/android"
+        val aData = "$optionalDir/android-data"
+        val aMujahi = "$optionalDir/android-mujahi"
         
-        if (checkDirExists(gData)) {
+        if (checkDirExists(aData)) {
             if (useShizukuOps && shizukuAvailable()) {
                 val cmd = """
-                    mv "$gDir" "$gMujahi" && \
-                    mv "$gData" "$gDir" && \
-                    mv "$fileinfo" "$fileinfoMujahi" && \
-                    mv "$fileinfoData" "$fileinfo"
+                    rm -rf "$aMujahi" 2>/dev/null
+                    mv "$aDir" "$aMujahi" && \
+                    mv "$aData" "$aDir"
                 """.trimIndent()
                 val success = executeShizukuCommand(cmd)
                 return if (success) "SUCCESS" else "ERROR"
             } else {
-                val f1 = File(gDir).renameTo(File(gMujahi))
-                val f2 = File(gData).renameTo(File(gDir))
-                val f3 = File(fileinfo).renameTo(File(fileinfoMujahi))
-                val f4 = File(fileinfoData).renameTo(File(fileinfo))
-                return if (f1 && f2 && f3 && f4) "SUCCESS" else "ERROR"
+                if (File(aMujahi).exists()) {
+                    File(aMujahi).deleteRecursively()
+                }
+                val f1 = File(aDir).renameTo(File(aMujahi))
+                val f2 = File(aData).renameTo(File(aDir))
+                return if (f1 && f2) "SUCCESS" else "ERROR"
             }
+        } else if (checkDirExists(aMujahi)) {
+            return "SUCCESS"
         }
         return "DIR_NOT_FOUND"
     }
@@ -318,39 +357,28 @@ object RenameUtil {
 
     fun installNewScript(zipFile: File, onProgress: (String) -> Unit, onComplete: (Boolean) -> Unit) {
         val destDir = File("/storage/emulated/0/Android/data")
-        val baseDir = File("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android")
-        val gDir = File(baseDir, "gameassetbundles")
-        val gData = File(baseDir, "gameassetbundles-data")
-        val fileinfo = File(baseDir, "fileinfo")
-        val fileinfoData = File(baseDir, "fileinfo-data")
+        val optionalDir = File("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional")
+        val aDir = File(optionalDir, "android")
+        val aData = File(optionalDir, "android-data")
 
         if (useShizukuOps && shizukuAvailable()) {
             val script = """
                 #!/system/bin/sh
                 ZIP_FILE="${zipFile.absolutePath}"
                 DEST_DIR="${destDir.absolutePath}"
-                BASE_DIR="${baseDir.absolutePath}"
-                G_DIR="${gDir.absolutePath}"
-                G_DATA="${gData.absolutePath}"
-                FILEINFO="${fileinfo.absolutePath}"
-                FILEINFO_DATA="${fileinfoData.absolutePath}"
+                OPTIONAL_DIR="${optionalDir.absolutePath}"
+                A_DIR="${aDir.absolutePath}"
+                A_DATA="${aData.absolutePath}"
                 
                 if [ ! -f "${'$'}ZIP_FILE" ]; then
                     echo "STATUS:Error: Zip file not found" >&2
                     exit 1
                 fi
                 
-                echo "STATUS:Copying gameassetbundles backup..."
-                if [ ! -d "${'$'}G_DATA" ]; then
-                    if ! cp -pr "${'$'}G_DIR" "${'$'}G_DATA"; then
-                        cp -r "${'$'}G_DIR" "${'$'}G_DATA"
-                    fi
-                fi
-                
-                echo "STATUS:Copying fileinfo backup..."
-                if [ ! -f "${'$'}FILEINFO_DATA" ]; then
-                    if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"; then
-                        cp "${'$'}FILEINFO" "${'$'}FILEINFO_DATA"
+                echo "STATUS:Copying android backup..."
+                if [ ! -d "${'$'}A_DATA" ]; then
+                    if ! cp -pr "${'$'}A_DIR" "${'$'}A_DATA"; then
+                        mkdir -p "${'$'}A_DATA" && cp -r "${'$'}A_DIR/." "${'$'}A_DATA/"
                     fi
                 fi
                 
@@ -372,13 +400,9 @@ object RenameUtil {
                         onComplete(false)
                         return@Thread
                     }
-                    onProgress("STATUS:Copying gameassetbundles backup...")
-                    if (!gData.exists()) {
-                        copyDirectory(gDir, gData)
-                    }
-                    onProgress("STATUS:Copying fileinfo backup...")
-                    if (!fileinfoData.exists()) {
-                        fileinfo.copyTo(fileinfoData, overwrite = true)
+                    onProgress("STATUS:Copying android backup...")
+                    if (!aData.exists()) {
+                        copyDirectory(aDir, aData)
                     }
                     onProgress("STATUS:Extracting ${zipFile.name}...")
                     extractZipToDirectoryMerge(zipFile, destDir)

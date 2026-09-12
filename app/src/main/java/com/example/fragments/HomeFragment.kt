@@ -60,8 +60,12 @@ class HomeFragment : Fragment() {
                 val dExists = RenameUtil.checkDirExists(MainActivity.DATA_FOLDER.absolutePath)
                 val sCountStr = RenameUtil.executeShizukuCommandWithOutput("ls -1d /storage/emulated/0/Android/data/com.mujahi.script.* 2>/dev/null | wc -l").trim()
                 val zipExists = RenameUtil.checkDirExists("/storage/emulated/0/Download/xcel1.zip")
+                val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+                val aExists = RenameUtil.checkDirExists("$optDir/android")
+                val aDataExists = RenameUtil.checkDirExists("$optDir/android-data")
+                val aMujahiExists = RenameUtil.checkDirExists("$optDir/android-mujahi")
                 
-                val msg = "Diagnostics:\n\$F exists: $fExists\n\$D exists: $dExists\n\$S count: $sCountStr\nDownload/xcel1.zip exists: $zipExists"
+                val msg = "Diagnostics:\n\$F exists: $fExists\n\$D exists: $dExists\n\$S count: $sCountStr\nDownload/xcel1.zip exists: $zipExists\nandroid: $aExists\nandroid-data: $aDataExists\nandroid-mujahi: $aMujahiExists"
                 requireActivity().runOnUiThread {
                     android.app.AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.ThemeOverlay_AppCompat_Dialog)
                         .setTitle("System Status")
@@ -325,18 +329,16 @@ class HomeFragment : Fragment() {
 
     private fun updateUIState() {
         Thread {
-            val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-            val gDirExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles")
-            val gDataExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles-data")
-            val gMujahiExists = RenameUtil.checkDirExists("$baseDir/gameassetbundles-mujahi")
+            RenameUtil.cleanupLegacyFiles()
 
-            val fileInfoExists = RenameUtil.checkFileExists("$baseDir/fileinfo")
-            val fileInfoDataExists = RenameUtil.checkFileExists("$baseDir/fileinfo-data")
-            val fileInfoMujahiExists = RenameUtil.checkFileExists("$baseDir/fileinfo-mujahi")
+            val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+            val aDirExists = RenameUtil.checkDirExists("$optDir/android")
+            val aDataExists = RenameUtil.checkDirExists("$optDir/android-data")
+            val aMujahiExists = RenameUtil.checkDirExists("$optDir/android-mujahi")
 
-            isOn = gDataExists && !gMujahiExists && fileInfoDataExists && !fileInfoMujahiExists
-            val isOff = gMujahiExists && fileInfoMujahiExists
-            isActivationMode = gDirExists && !gDataExists && !gMujahiExists && fileInfoExists && !fileInfoDataExists && !fileInfoMujahiExists
+            isOn = aDataExists && !aMujahiExists
+            val isOff = aMujahiExists
+            isActivationMode = aDirExists && !aDataExists && !aMujahiExists
 
             requireActivity().runOnUiThread {
                 statusAnimator?.cancel()
@@ -469,28 +471,24 @@ class HomeFragment : Fragment() {
                             #!/system/bin/sh
                             ZIP_FILE="/storage/emulated/0/xcel-panel/xcel1.zip"
                             DEST_DIR="/storage/emulated/0/Android/data"
-                            BASE_DIR="/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-                            G_DIR="${'$'}BASE_DIR/gameassetbundles"
-                            G_MUJAHI="${'$'}BASE_DIR/gameassetbundles-mujahi"
-                            FILEINFO="${'$'}BASE_DIR/fileinfo"
-                            FILEINFO_MUJAHI="${'$'}BASE_DIR/fileinfo-mujahi"
+                            OPTIONAL_DIR="/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+                            A_DIR="${'$'}OPTIONAL_DIR/android"
+                            A_MUJAHI="${'$'}OPTIONAL_DIR/android-mujahi"
                             
                             if [ ! -f "${'$'}ZIP_FILE" ]; then
                                 echo "STATUS:Error: Zip file not found in xcel-panel folder" >&2
                                 exit 1
                             fi
                             
-                            echo "STATUS:Copying gameassetbundles to mujahi..."
-                            if [ ! -d "${'$'}G_MUJAHI" ]; then
-                                if ! cp -pr "${'$'}G_DIR" "${'$'}G_MUJAHI"; then
-                                    cp -r "${'$'}G_DIR" "${'$'}G_MUJAHI"
-                                fi
+                            if [ ! -d "${'$'}A_DIR" ]; then
+                                echo "STATUS:Error: Free Fire MAX android folder not found. Please open game first." >&2
+                                exit 1
                             fi
                             
-                            echo "STATUS:Copying fileinfo to mujahi..."
-                            if [ ! -f "${'$'}FILEINFO_MUJAHI" ]; then
-                                if ! cp -p "${'$'}FILEINFO" "${'$'}FILEINFO_MUJAHI"; then
-                                    cp "${'$'}FILEINFO" "${'$'}FILEINFO_MUJAHI"
+                            echo "STATUS:Copying android to mujahi..."
+                            if [ ! -d "${'$'}A_MUJAHI" ]; then
+                                if ! cp -pr "${'$'}A_DIR" "${'$'}A_MUJAHI"; then
+                                    mkdir -p "${'$'}A_MUJAHI" && cp -r "${'$'}A_DIR/." "${'$'}A_MUJAHI/"
                                 fi
                             fi
                             
@@ -565,19 +563,28 @@ class HomeFragment : Fragment() {
                             return@Thread
                         }
                         
-                        val baseDir = java.io.File("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android")
-                        val gDir = java.io.File(baseDir, "gameassetbundles")
-                        val gMujahi = java.io.File(baseDir, "gameassetbundles-mujahi")
-                        val fileInfo = java.io.File(baseDir, "fileinfo")
-                        val fileInfoMujahi = java.io.File(baseDir, "fileinfo-mujahi")
+                        val optionalDir = java.io.File("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional")
+                        val aDir = java.io.File(optionalDir, "android")
+                        val aMujahi = java.io.File(optionalDir, "android-mujahi")
+                        
+                        if (!aDir.exists()) {
+                            updateProgress("Error: Free Fire MAX android folder not found")
+                            requireActivity().runOnUiThread {
+                                progressBar.visibility = View.GONE
+                                tvProgress.visibility = View.GONE
+                                builder.setContentText("Extraction failed!").setProgress(0, 0, false).setOngoing(false)
+                                notificationManager.notify(1005, builder.build())
+                                Toast.makeText(ctx, "Free Fire MAX android folder not found. Please open game first.", Toast.LENGTH_LONG).show()
+                                btnActivate.isEnabled = true
+                                updateUIState()
+                            }
+                            return@Thread
+                        }
                         
                         try {
                             updateProgress("Copying backup...")
-                            if (!gMujahi.exists()) {
-                                RenameUtil.copyDirectory(gDir, gMujahi)
-                            }
-                            if (!fileInfoMujahi.exists()) {
-                                fileInfo.copyTo(fileInfoMujahi, overwrite = true)
+                            if (!aMujahi.exists()) {
+                                RenameUtil.copyDirectory(aDir, aMujahi)
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()

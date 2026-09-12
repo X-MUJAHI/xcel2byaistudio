@@ -99,10 +99,10 @@ class SettingsFragment : Fragment() {
         val tvAvailableScripts = view.findViewById<TextView>(R.id.tv_available_scripts)
 
         Thread {
-            val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-            val gData = "$baseDir/gameassetbundles-data"
+            val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+            val aData = "$optDir/android-data"
             var current = "None"
-            if (RenameUtil.checkDirExists(gData)) {
+            if (RenameUtil.checkDirExists(aData)) {
                 current = "Default (ON)"
             } else {
                 current = "Default (OFF)"

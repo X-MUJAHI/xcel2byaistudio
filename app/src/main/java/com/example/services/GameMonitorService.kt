@@ -66,7 +66,7 @@ class GameMonitorService : Service() {
 
                 if (!isForeground && (System.currentTimeMillis() - lastSeenForegroundTime > GRACE_PERIOD_MS)) {
                     // Turn OFF
-                    if (RenameUtil.checkDirExists("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android/gameassetbundles-data")) {
+                    if (RenameUtil.checkDirExists("/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android-data")) {
                         RenameUtil.turnOff()
                     }
                     isRunning = false

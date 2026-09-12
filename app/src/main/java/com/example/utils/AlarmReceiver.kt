@@ -40,9 +40,9 @@ class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         Thread {
-            val baseDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional/android"
-            val gData = "$baseDir/gameassetbundles-data"
-            if (RenameUtil.checkDirExists(gData)) {
+            val optDir = "/storage/emulated/0/Android/data/com.dts.freefiremax/files/contentcache/Optional"
+            val aData = "$optDir/android-data"
+            if (RenameUtil.checkDirExists(aData)) {
                 RenameUtil.turnOff()
                 context.getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
                     .edit().remove(MainActivity.KEY_AUTO_OFF_TIME).apply()
