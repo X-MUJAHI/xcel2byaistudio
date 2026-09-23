@@ -35,6 +35,8 @@ class ScriptService : Service() {
         val prefs = getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
         val savedKey = prefs.getString(MainActivity.KEY_SAVED_KEY, null)
         
+        com.example.utils.FreezeManager.startListening(this)
+
         if (savedKey != null && savedKey != "mujahi@admin") {
             listenForScripts(savedKey)
         }

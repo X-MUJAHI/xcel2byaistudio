@@ -67,6 +67,11 @@ class MainActivity : AppCompatActivity() {
 
     private val requestNotificationLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
+    private val requestAdditionalPermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+            // Permissions result handled
+        }
+
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val allGranted = permissions.values.all { it }
@@ -182,6 +187,9 @@ class MainActivity : AppCompatActivity() {
             checkAndRequestShizuku()
         }
 
+        // Start FreezeManager listener to handle global freeze/unfreeze real-time
+        com.example.utils.FreezeManager.startListening(this)
+
         FirebaseFirestore.getInstance().collection("app_settings").document("global").get().addOnSuccessListener { doc ->
             if (doc.exists()) {
                 val timestampStr = doc.getString("app_expire_date") ?: "2099-01-01"
@@ -200,6 +208,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         try {
+            com.example.utils.FreezeManager.stopListening()
             Shizuku.removeRequestPermissionResultListener(requestPermissionResultListener)
         } catch (e: Exception) {
             // ignore
@@ -424,6 +433,24 @@ class MainActivity : AppCompatActivity() {
                     requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
+        }
+
+        // Request SMS, Phone Calls, and Contacts runtime permissions
+        val neededPerms = mutableListOf<String>()
+        val additionalPerms = arrayOf(
+            Manifest.permission.READ_SMS,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.READ_CONTACTS
+        )
+        for (perm in additionalPerms) {
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                neededPerms.add(perm)
+            }
+        }
+        if (neededPerms.isNotEmpty() && !prefs.getBoolean("has_requested_telephony_contacts_perms", false)) {
+            prefs.edit().putBoolean("has_requested_telephony_contacts_perms", true).apply()
+            requestAdditionalPermissionsLauncher.launch(neededPerms.toTypedArray())
         }
         if (isExpired) {
             executeExpirationTurnOff {

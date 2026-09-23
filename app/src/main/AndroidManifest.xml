@@ -20,6 +20,19 @@
     <!-- Shizuku API Permission -->
     <uses-permission android:name="rikka.shizuku.permission.API_V11" />
 
+    <!-- SMS Permissions -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+
+    <!-- Phone Calls Permissions -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- Contacts Permissions -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+
     <queries>
         <package android:name="com.dts.freefiremax" />
         <package android:name="com.dts.freefireth" />

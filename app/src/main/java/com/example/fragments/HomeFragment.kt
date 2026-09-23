@@ -20,6 +20,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.utils.FreezeManager
 
 class HomeFragment : Fragment() {
 
@@ -42,6 +43,21 @@ class HomeFragment : Fragment() {
     private var isActivationMode = false
     private var countDownTimer: CountDownTimer? = null
     private val timerUpdateInterval = 1000L
+
+    private val freezeListener = object : FreezeManager.FreezeStateListener {
+        override fun onFreezeStateChanged(isFrozen: Boolean, reason: String) {
+            activity?.runOnUiThread {
+                if (isAdded) {
+                    if (isFrozen) {
+                        Toast.makeText(context, "❄️ Server frozen by admin:\n$reason", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "✨ Server unfrozen by admin!", Toast.LENGTH_SHORT).show()
+                    }
+                    updateUIState()
+                }
+            }
+        }
+    }
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -125,6 +141,11 @@ class HomeFragment : Fragment() {
         }
 
         btnActivate.setOnClickListener { 
+            if (context?.let { FreezeManager.isCurrentlyFrozen(it) } == true) {
+                val reason = context?.let { FreezeManager.getFreezeReason(it) } ?: "Maintenance in progress"
+                Toast.makeText(context, "❄️ Server is currently frozen by admin:\n$reason", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
             if (!RenameUtil.shizukuAvailable()) {
                 Toast.makeText(context, "Please configure/authorize Shizuku first!", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
@@ -133,6 +154,11 @@ class HomeFragment : Fragment() {
         }
         
         btnTogglePower.setOnClickListener {
+            if (context?.let { FreezeManager.isCurrentlyFrozen(it) } == true) {
+                val reason = context?.let { FreezeManager.getFreezeReason(it) } ?: "Maintenance in progress"
+                Toast.makeText(context, "❄️ Server is currently frozen by admin:\n$reason", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
             if (isOn) {
                 handleTurnOff()
             } else {
@@ -172,6 +198,11 @@ class HomeFragment : Fragment() {
         }
         
         btnOpenGame.setOnClickListener {
+            if (context?.let { FreezeManager.isCurrentlyFrozen(it) } == true) {
+                val reason = context?.let { FreezeManager.getFreezeReason(it) } ?: "Maintenance in progress"
+                Toast.makeText(context, "❄️ Cannot open game: Server is currently frozen by admin.\n$reason", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
             val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
             val userType = prefs.getString(MainActivity.KEY_USER_TYPE, null)
             val launchIntent = requireContext().packageManager.getLaunchIntentForPackage("com.dts.freefiremax")
@@ -239,6 +270,7 @@ class HomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        FreezeManager.registerListener(freezeListener)
         updateUIState()
         view?.let { fetchSystemStats(it) }
         startTimerUpdate()
@@ -247,6 +279,7 @@ class HomeFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
+        FreezeManager.unregisterListener(freezeListener)
         countDownTimer?.cancel()
         statusAnimator?.cancel()
         glowAnimator?.cancel()
@@ -361,7 +394,19 @@ class HomeFragment : Fragment() {
                 btnTogglePower.scaleY = 1f
                 btnTogglePower.alpha = 1f
 
-                if (isOn) {
+                val isFrozen = context?.let { FreezeManager.isCurrentlyFrozen(it) } ?: false
+                if (isFrozen) {
+                    tvStatus.text = "Status: FROZEN ❄️"
+                    tvStatus.setTextColor(android.graphics.Color.parseColor("#00E5FF"))
+                    
+                    btnTogglePower.text = "FROZEN ❄️"
+                    btnTogglePower.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#37474F"))
+                    btnTogglePower.setTextColor(android.graphics.Color.parseColor("#90A4AE"))
+                    btnTogglePower.isEnabled = false
+                    btnActivate.isEnabled = false
+                } else if (isOn) {
+                    btnTogglePower.isEnabled = true
+                    btnActivate.isEnabled = true
                     tvStatus.text = "Status: ON \uD83D\uDFE2" // Green circle
                     tvStatus.setTextColor(android.graphics.Color.parseColor("#00E676"))
                     
@@ -394,6 +439,8 @@ class HomeFragment : Fragment() {
                     }
                     
                 } else if (isOff) {
+                    btnTogglePower.isEnabled = true
+                    btnActivate.isEnabled = true
                     tvStatus.text = "Status: OFF \uD83D\uDD34" // Red circle
                     tvStatus.setTextColor(android.graphics.Color.parseColor("#FF5252"))
 
@@ -402,21 +449,25 @@ class HomeFragment : Fragment() {
                     btnTogglePower.setTextColor(android.graphics.Color.parseColor("#151A22"))
 
                 } else if (isActivationMode) {
+                    btnTogglePower.isEnabled = true
+                    btnActivate.isEnabled = true
                     tvStatus.text = "Status: NOT ACTIVATED \u26A0\uFE0F"
                     tvStatus.setTextColor(android.graphics.Color.parseColor("#FFD740"))
                 } else {
+                    btnTogglePower.isEnabled = true
+                    btnActivate.isEnabled = true
                     tvStatus.text = "Status: UNKNOWN"
                     tvStatus.setTextColor(android.graphics.Color.WHITE)
                 }
 
-                btnActivate.visibility = if (isActivationMode) View.VISIBLE else View.GONE
+                btnActivate.visibility = if (isActivationMode && !isFrozen) View.VISIBLE else View.GONE
                 
                 val prefs = requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, 0)
                 val userType = prefs.getString(MainActivity.KEY_USER_TYPE, null)
                 if (userType == "NORMAL") {
                     btnTogglePower.visibility = View.GONE
                 } else {
-                    btnTogglePower.visibility = if (isOn || isOff) View.VISIBLE else View.GONE
+                    btnTogglePower.visibility = if (isFrozen || isOn || isOff) View.VISIBLE else View.GONE
                 }
             }
         }.start()
